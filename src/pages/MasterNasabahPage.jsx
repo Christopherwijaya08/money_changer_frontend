@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
@@ -14,6 +15,7 @@ import Avatar from '@mui/material/Avatar'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import EditIcon from '@mui/icons-material/Edit'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import SettingsIcon from '@mui/icons-material/Settings'
 import { customers as initialCustomers } from '../mocks/data'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerDetailDialog from '../components/CustomerDetailDialog'
@@ -55,9 +57,14 @@ export default function MasterNasabahPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Typography variant="h5" component="h1" className="font-medium">
-        Master Nasabah
-      </Typography>
+      <div className="flex items-center justify-between">
+        <Typography variant="h5" component="h1" className="font-medium">
+          Master Nasabah
+        </Typography>
+        <Button component={Link} to="/nasabah/threshold" startIcon={<SettingsIcon />} size="small">
+          Pengaturan Threshold
+        </Button>
+      </div>
 
       <Paper className="p-6">
         <div className="flex items-center justify-between gap-4 mb-4">
