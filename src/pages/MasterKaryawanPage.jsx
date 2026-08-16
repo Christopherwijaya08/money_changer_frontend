@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
+import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Table from '@mui/material/Table'
@@ -23,9 +24,16 @@ import EmployeeFormDialog from '../components/EmployeeFormDialog'
 
 export default function MasterKaryawanPage() {
   const [employees, setEmployees] = useState(initialEmployees)
+  const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState(null)
   const [deactivatingEmployee, setDeactivatingEmployee] = useState(null)
+
+  const filteredEmployees = useMemo(() => {
+    const needle = search.trim().toLowerCase()
+    if (!needle) return employees
+    return employees.filter((e) => e.name.toLowerCase().includes(needle))
+  }, [employees, search])
 
   function openAdd() {
     setEditingEmployee(null)
@@ -53,16 +61,25 @@ export default function MasterKaryawanPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <Typography variant="h5" component="h1" className="font-medium">
-          Master Karyawan
-        </Typography>
-        <Button variant="contained" startIcon={<PersonAddAlt1Icon />} onClick={openAdd}>
-          Tambah Karyawan
-        </Button>
-      </div>
+      <Typography variant="h5" component="h1" className="font-medium">
+        Master Karyawan
+      </Typography>
 
       <Paper className="p-6">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <TextField
+            size="small"
+            label="Cari karyawan"
+            placeholder="Cari nama karyawan..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ minWidth: 320 }}
+          />
+          <Button variant="contained" startIcon={<PersonAddAlt1Icon />} onClick={openAdd}>
+            Tambah Karyawan
+          </Button>
+        </div>
+
         <TableContainer>
           <Table size="small">
             <TableHead>
@@ -74,7 +91,7 @@ export default function MasterKaryawanPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {employees.map((e) => (
+              {filteredEmployees.map((e) => (
                 <TableRow key={e.id} hover>
                   <TableCell>{e.name}</TableCell>
                   <TableCell>{e.position}</TableCell>
@@ -101,6 +118,13 @@ export default function MasterKaryawanPage() {
                   </TableCell>
                 </TableRow>
               ))}
+              {filteredEmployees.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">
+                    Tidak ada karyawan yang cocok.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
