@@ -17,7 +17,7 @@ const schema = yup.object({
   address: yup.string().trim().required('Wajib diisi'),
 })
 
-export default function BranchFormDialog({ open, onClose, onSave }) {
+export default function BranchFormDialog({ open, onClose, onSave, branch = null }) {
   const {
     register,
     handleSubmit,
@@ -25,18 +25,21 @@ export default function BranchFormDialog({ open, onClose, onSave }) {
     formState: { errors },
   } = useForm({ defaultValues: emptyForm, resolver: yupResolver(schema) })
 
+  const isEditing = !!branch
+
   useEffect(() => {
-    if (open) reset(emptyForm)
-  }, [open, reset])
+    if (!open) return
+    reset(branch ? { name: branch.name, address: branch.address } : emptyForm)
+  }, [open, branch, reset])
 
   function onSubmit(data) {
-    onSave({ id: Date.now(), isActive: true, ...data })
+    onSave({ id: branch?.id ?? Date.now(), isActive: branch?.isActive ?? true, ...data })
     onClose()
   }
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Tambah Cabang</DialogTitle>
+      <DialogTitle>{isEditing ? 'Edit Cabang' : 'Tambah Cabang'}</DialogTitle>
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent>
           <Grid container spacing={2} className="mt-1">
