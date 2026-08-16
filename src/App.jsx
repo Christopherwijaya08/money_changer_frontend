@@ -5,6 +5,7 @@ import MasterKursPage from './pages/MasterKursPage'
 import MasterNasabahPage from './pages/MasterNasabahPage'
 import ThresholdSettingsPage from './pages/ThresholdSettingsPage'
 import MasterKaryawanPage from './pages/MasterKaryawanPage'
+import MasterCabangPage from './pages/MasterCabangPage'
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/nasabah" element={<MasterNasabahPage />} />
         <Route path="/nasabah/threshold" element={<ThresholdSettingsPage />} />
         <Route path="/karyawan" element={<MasterKaryawanPage />} />
+        <Route path="/cabang" element={<MasterCabangPage />} />
       </Routes>
     </AppShell>
   )

@@ -62,6 +62,12 @@ export const employees = [
   { id: 4, name: 'Guntur Saputra', position: 'Teller', isActive: false },
 ]
 
+export const branches = [
+  { id: 1, name: 'Cabang Pusat - Jakarta', address: 'Jl. Sudirman No. 1, Jakarta Pusat', isActive: true },
+  { id: 2, name: 'Cabang Surabaya', address: 'Jl. Tunjungan No. 25, Surabaya', isActive: true },
+  { id: 3, name: 'Cabang Bandung', address: 'Jl. Asia Afrika No. 10, Bandung', isActive: false },
+]
+
 export const transactions = [
   {
     id: 1,
