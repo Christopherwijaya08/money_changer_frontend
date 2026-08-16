@@ -13,14 +13,17 @@ import TableContainer from '@mui/material/TableContainer'
 import Avatar from '@mui/material/Avatar'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import EditIcon from '@mui/icons-material/Edit'
+import VisibilityIcon from '@mui/icons-material/Visibility'
 import { customers as initialCustomers } from '../mocks/data'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
+import CustomerDetailDialog from '../components/CustomerDetailDialog'
 
 export default function MasterNasabahPage() {
   const [customerList, setCustomerList] = useState(initialCustomers)
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState(null)
+  const [detailCustomer, setDetailCustomer] = useState(null)
 
   const filteredCustomers = useMemo(() => {
     const needle = search.trim().toLowerCase()
@@ -96,6 +99,9 @@ export default function MasterNasabahPage() {
                   <TableCell>{c.phone}</TableCell>
                   <TableCell>{c.address ?? '-'}</TableCell>
                   <TableCell align="right">
+                    <IconButton size="small" aria-label={`Detail ${c.name}`} onClick={() => setDetailCustomer(c)}>
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
                     <IconButton size="small" aria-label={`Edit ${c.name}`} onClick={() => openEdit(c)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
@@ -119,6 +125,11 @@ export default function MasterNasabahPage() {
         onClose={() => setDialogOpen(false)}
         onAdd={handleSave}
         customer={editingCustomer}
+      />
+      <CustomerDetailDialog
+        open={!!detailCustomer}
+        onClose={() => setDetailCustomer(null)}
+        customer={detailCustomer}
       />
     </div>
   )
