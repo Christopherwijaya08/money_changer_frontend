@@ -9,8 +9,7 @@ import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Grid from '@mui/material/Grid'
-import Avatar from '@mui/material/Avatar'
-import UploadFileIcon from '@mui/icons-material/UploadFile'
+import KtpPhotoUpload from './KtpPhotoUpload'
 
 const emptyForm = { name: '', identityNumber: '', address: '', phone: '' }
 
@@ -58,11 +57,6 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
     setKtpPreview(customer?.ktpPhotoUrl ?? null)
   }, [open, customer, reset])
 
-  function handlePhoto(e) {
-    const file = e.target.files?.[0]
-    if (file) setKtpPreview(URL.createObjectURL(file))
-  }
-
   function handleClose() {
     onClose()
   }
@@ -108,14 +102,8 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
             <Grid size={12}>
               <TextField fullWidth label="Alamat" multiline minRows={2} {...register('address')} />
             </Grid>
-            <Grid size={12} className="flex items-center gap-3">
-              <Avatar variant="rounded" src={ktpPreview} sx={{ width: 64, height: 48 }}>
-                KTP
-              </Avatar>
-              <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
-                Upload Foto KTP
-                <input type="file" accept="image/*" hidden onChange={handlePhoto} />
-              </Button>
+            <Grid size={12}>
+              <KtpPhotoUpload value={ktpPreview} onChange={setKtpPreview} />
             </Grid>
           </Grid>
         </DialogContent>
