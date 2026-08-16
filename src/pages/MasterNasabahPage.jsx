@@ -16,8 +16,7 @@ import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import EditIcon from '@mui/icons-material/Edit'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import SettingsIcon from '@mui/icons-material/Settings'
-import FlagIcon from '@mui/icons-material/Flag'
-import { customers as initialCustomers, transactions } from '../mocks/data'
+import { customers as initialCustomers } from '../mocks/data'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerDetailDialog from '../components/CustomerDetailDialog'
 
@@ -62,14 +61,9 @@ export default function MasterNasabahPage() {
         <Typography variant="h5" component="h1" className="font-medium">
           Master Nasabah
         </Typography>
-        <div className="flex gap-2">
-          <Button component={Link} to="/nasabah/review" startIcon={<FlagIcon />} size="small">
-            Perlu Review ({transactions.filter((t) => t.requiresReview).length})
-          </Button>
-          <Button component={Link} to="/nasabah/threshold" startIcon={<SettingsIcon />} size="small">
-            Pengaturan Threshold
-          </Button>
-        </div>
+        <Button component={Link} to="/nasabah/threshold" startIcon={<SettingsIcon />} size="small">
+          Pengaturan Threshold
+        </Button>
       </div>
 
       <Paper className="p-6">

@@ -19,6 +19,8 @@ import TableContainer from '@mui/material/TableContainer'
 import TablePagination from '@mui/material/TablePagination'
 import Chip from '@mui/material/Chip'
 import Alert from '@mui/material/Alert'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import PrintIcon from '@mui/icons-material/Print'
 import { currencies, customers as initialCustomers, employees, transactions as initialTransactions } from '../mocks/data'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
@@ -84,6 +86,7 @@ export default function TransaksiPage() {
   const [filterCurrency, setFilterCurrency] = useState('')
   const [filterDate, setFilterDate] = useState('')
   const [filterCustomer, setFilterCustomer] = useState('')
+  const [filterReviewOnly, setFilterReviewOnly] = useState(false)
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(5)
 
@@ -92,6 +95,7 @@ export default function TransaksiPage() {
     setFilterCurrency('')
     setFilterDate('')
     setFilterCustomer('')
+    setFilterReviewOnly(false)
     setPage(0)
   }
 
@@ -149,13 +153,14 @@ export default function TransaksiPage() {
       if (filterCurrency && t.currencyCode !== filterCurrency) return false
       if (filterCustomer && t.customerName !== filterCustomer) return false
       if (filterDate && !t.createdAt.startsWith(filterDate)) return false
+      if (filterReviewOnly && !t.requiresReview) return false
       return true
     })
-  }, [transactions, filterEmployee, filterCurrency, filterCustomer, filterDate])
+  }, [transactions, filterEmployee, filterCurrency, filterCustomer, filterDate, filterReviewOnly])
 
   useEffect(() => {
     setPage(0)
-  }, [filterEmployee, filterCurrency, filterCustomer, filterDate])
+  }, [filterEmployee, filterCurrency, filterCustomer, filterDate, filterReviewOnly])
 
   const paginatedTransactions = filteredTransactions.slice(
     page * rowsPerPage,
@@ -319,9 +324,11 @@ export default function TransaksiPage() {
       </Paper>
 
       <Paper className="p-6">
-        <Typography variant="h6" className="mb-4">
-          Riwayat Transaksi
-        </Typography>
+        <div className="mb-4">
+          <Typography variant="h6">
+            Riwayat Transaksi
+          </Typography>
+        </div>
         <Grid container spacing={2} className="mb-4">
           <Grid size={{ xs: 6, sm: 3 }}>
             <TextField
@@ -385,7 +392,17 @@ export default function TransaksiPage() {
               ))}
             </TextField>
           </Grid>
-          <Grid size={12} className="flex justify-end">
+          <Grid size={12} className="flex items-center justify-between">
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={filterReviewOnly}
+                  onChange={(e) => setFilterReviewOnly(e.target.checked)}
+                />
+              }
+              label="Perlu Review"
+            />
             <Button size="small" onClick={handleResetFilters}>
               Reset Filter
             </Button>
