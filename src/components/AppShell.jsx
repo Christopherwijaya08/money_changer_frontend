@@ -25,7 +25,7 @@ const menuGroups = [
     items: [
       { label: 'Master Kurs', path: '/master-kurs', active: true },
       { label: 'Nasabah', path: '/nasabah', active: true },
-      { label: 'Karyawan', path: '/karyawan', active: false },
+      { label: 'Karyawan', path: '/karyawan', active: true },
     ],
   },
   {
