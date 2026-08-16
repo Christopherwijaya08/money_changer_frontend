@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { yupResolver } from '@hookform/resolvers/yup'
+import * as yup from 'yup'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -11,31 +14,38 @@ import UploadFileIcon from '@mui/icons-material/UploadFile'
 
 const emptyForm = { name: '', identityNumber: '', address: '', phone: '' }
 
-function validate(form) {
-  const errors = {}
-  if (!form.name.trim()) errors.name = 'Wajib diisi'
-
-  const identityDigits = form.identityNumber.replace(/\D/g, '')
-  if (!form.identityNumber.trim()) errors.identityNumber = 'Wajib diisi'
-  else if (identityDigits.length !== 16) errors.identityNumber = 'NIK harus 16 digit angka'
-
-  const phoneDigits = form.phone.replace(/\D/g, '')
-  if (!form.phone.trim()) errors.phone = 'Wajib diisi'
-  else if (phoneDigits.length < 10 || phoneDigits.length > 13) errors.phone = 'Nomor HP harus 10-13 digit angka'
-
-  return errors
-}
+const customerSchema = yup.object({
+  name: yup.string().trim().required('Wajib diisi'),
+  identityNumber: yup
+    .string()
+    .trim()
+    .required('Wajib diisi')
+    .test('nik-16-digit', 'NIK harus 16 digit angka', (v) => (v ?? '').replace(/\D/g, '').length === 16),
+  phone: yup
+    .string()
+    .trim()
+    .required('Wajib diisi')
+    .test('phone-10-13-digit', 'Nomor HP harus 10-13 digit angka', (v) => {
+      const digits = (v ?? '').replace(/\D/g, '').length
+      return digits >= 10 && digits <= 13
+    }),
+  address: yup.string(),
+})
 
 export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer = null }) {
-  const [form, setForm] = useState(emptyForm)
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({ defaultValues: emptyForm, resolver: yupResolver(customerSchema) })
   const [ktpPreview, setKtpPreview] = useState(null)
-  const [errors, setErrors] = useState({})
 
   const isEditing = !!customer
 
   useEffect(() => {
     if (!open) return
-    setForm(
+    reset(
       customer
         ? {
             name: customer.name,
@@ -46,13 +56,7 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
         : emptyForm
     )
     setKtpPreview(customer?.ktpPhotoUrl ?? null)
-    setErrors({})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, customer])
-
-  function handleField(field, value) {
-    setForm((f) => ({ ...f, [field]: value }))
-  }
+  }, [open, customer, reset])
 
   function handlePhoto(e) {
     const file = e.target.files?.[0]
@@ -63,78 +67,65 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
     onClose()
   }
 
-  function handleSubmit() {
-    const nextErrors = validate(form)
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors)
-      return
-    }
-    onAdd({ id: customer?.id ?? Date.now(), ...form, ktpPhotoUrl: ktpPreview })
+  function onSubmit(data) {
+    onAdd({ id: customer?.id ?? Date.now(), ...data, ktpPhotoUrl: ktpPreview })
     handleClose()
   }
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>{isEditing ? 'Edit Nasabah' : 'Nasabah Baru'}</DialogTitle>
-      <DialogContent>
-        <Grid container spacing={2} className="mt-1">
-          <Grid size={12}>
-            <TextField
-              fullWidth
-              label="Nama"
-              value={form.name}
-              error={!!errors.name}
-              helperText={errors.name}
-              onChange={(e) => handleField('name', e.target.value)}
-            />
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogContent>
+          <Grid container spacing={2} className="mt-1">
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                label="Nama"
+                error={!!errors.name}
+                helperText={errors.name?.message}
+                {...register('name')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Nomor Identitas (KTP)"
+                error={!!errors.identityNumber}
+                helperText={errors.identityNumber?.message}
+                {...register('identityNumber')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Nomor HP"
+                error={!!errors.phone}
+                helperText={errors.phone?.message}
+                {...register('phone')}
+              />
+            </Grid>
+            <Grid size={12}>
+              <TextField fullWidth label="Alamat" multiline minRows={2} {...register('address')} />
+            </Grid>
+            <Grid size={12} className="flex items-center gap-3">
+              <Avatar variant="rounded" src={ktpPreview} sx={{ width: 64, height: 48 }}>
+                KTP
+              </Avatar>
+              <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
+                Upload Foto KTP
+                <input type="file" accept="image/*" hidden onChange={handlePhoto} />
+              </Button>
+            </Grid>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="Nomor Identitas (KTP)"
-              value={form.identityNumber}
-              error={!!errors.identityNumber}
-              helperText={errors.identityNumber}
-              onChange={(e) => handleField('identityNumber', e.target.value)}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="Nomor HP"
-              value={form.phone}
-              error={!!errors.phone}
-              helperText={errors.phone}
-              onChange={(e) => handleField('phone', e.target.value)}
-            />
-          </Grid>
-          <Grid size={12}>
-            <TextField
-              fullWidth
-              label="Alamat"
-              multiline
-              minRows={2}
-              value={form.address}
-              onChange={(e) => handleField('address', e.target.value)}
-            />
-          </Grid>
-          <Grid size={12} className="flex items-center gap-3">
-            <Avatar variant="rounded" src={ktpPreview} sx={{ width: 64, height: 48 }}>
-              KTP
-            </Avatar>
-            <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
-              Upload Foto KTP
-              <input type="file" accept="image/*" hidden onChange={handlePhoto} />
-            </Button>
-          </Grid>
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose}>Batal</Button>
-        <Button variant="contained" onClick={handleSubmit}>
-          {isEditing ? 'Simpan' : 'Simpan & Gunakan'}
-        </Button>
-      </DialogActions>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Batal</Button>
+          <Button type="submit" variant="contained">
+            {isEditing ? 'Simpan' : 'Simpan & Gunakan'}
+          </Button>
+        </DialogActions>
+      </form>
     </Dialog>
   )
 }

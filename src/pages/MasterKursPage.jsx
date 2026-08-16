@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { yupResolver } from '@hookform/resolvers/yup'
+import * as yup from 'yup'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Table from '@mui/material/Table'
@@ -20,14 +23,38 @@ import { currencies as initialCurrencies, exchangeRateHistory as initialHistory 
 
 const CURRENT_USER = 'Admin'
 
+const rateSchema = yup.object({
+  rateBuy: yup
+    .number()
+    .typeError('Kurs beli harus lebih dari 0')
+    .positive('Kurs beli harus lebih dari 0')
+    .required('Kurs beli harus lebih dari 0'),
+  rateSell: yup
+    .number()
+    .typeError('Kurs jual harus lebih dari 0')
+    .positive('Kurs jual harus lebih dari 0')
+    .required('Kurs jual harus lebih dari 0')
+    .test('gt-buy', 'Kurs jual harus lebih besar dari kurs beli', function (value) {
+      return value > this.parent.rateBuy
+    }),
+})
+
 export default function MasterKursPage() {
   const [currencies, setCurrencies] = useState(initialCurrencies)
   const [history, setHistory] = useState(initialHistory)
   const [editing, setEditing] = useState(null)
-  const [rateBuy, setRateBuy] = useState('')
-  const [rateSell, setRateSell] = useState('')
-  const [errors, setErrors] = useState({})
   const [filterCurrency, setFilterCurrency] = useState('')
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm({ defaultValues: { rateBuy: '', rateSell: '' }, resolver: yupResolver(rateSchema) })
+
+  const rateBuy = watch('rateBuy')
+  const rateSell = watch('rateSell')
 
   const filteredHistory = filterCurrency
     ? history.filter((h) => h.currencyCode === filterCurrency)
@@ -35,32 +62,21 @@ export default function MasterKursPage() {
 
   function openEdit(currency) {
     setEditing(currency)
-    setRateBuy(currency.rateBuy)
-    setRateSell(currency.rateSell)
-    setErrors({})
+    reset({ rateBuy: currency.rateBuy, rateSell: currency.rateSell })
   }
 
   function closeEdit() {
     setEditing(null)
   }
 
-  function handleSave() {
-    const nextErrors = {}
-    if (!rateBuy || Number(rateBuy) <= 0) nextErrors.rateBuy = 'Kurs beli harus lebih dari 0'
-    if (!rateSell || Number(rateSell) <= 0) nextErrors.rateSell = 'Kurs jual harus lebih dari 0'
-    if (!nextErrors.rateBuy && !nextErrors.rateSell && Number(rateSell) <= Number(rateBuy)) {
-      nextErrors.rateSell = 'Kurs jual harus lebih besar dari kurs beli'
-    }
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
-
+  function onSubmit(data) {
     const now = new Date().toISOString().slice(0, 16).replace('T', ' ')
+    const newBuy = Number(data.rateBuy)
+    const newSell = Number(data.rateSell)
 
     setCurrencies((list) =>
       list.map((c) =>
-        c.id === editing.id
-          ? { ...c, rateBuy: Number(rateBuy), rateSell: Number(rateSell), updatedAt: now, updatedBy: CURRENT_USER }
-          : c
+        c.id === editing.id ? { ...c, rateBuy: newBuy, rateSell: newSell, updatedAt: now, updatedBy: CURRENT_USER } : c
       )
     )
 
@@ -70,8 +86,8 @@ export default function MasterKursPage() {
         currencyCode: editing.code,
         oldBuy: editing.rateBuy,
         oldSell: editing.rateSell,
-        newBuy: Number(rateBuy),
-        newSell: Number(rateSell),
+        newBuy,
+        newSell,
         changedBy: CURRENT_USER,
         changedAt: now,
       },
@@ -181,45 +197,45 @@ export default function MasterKursPage() {
 
       <Dialog open={!!editing} onClose={closeEdit} maxWidth="xs" fullWidth>
         <DialogTitle>Update Kurs {editing?.code}</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} className="mt-1">
-            <Grid size={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Kurs Beli"
-                value={rateBuy}
-                error={!!errors.rateBuy}
-                helperText={errors.rateBuy}
-                onChange={(e) => setRateBuy(e.target.value)}
-              />
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <DialogContent>
+            <Grid container spacing={2} className="mt-1">
+              <Grid size={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Kurs Beli"
+                  error={!!errors.rateBuy}
+                  helperText={errors.rateBuy?.message}
+                  {...register('rateBuy')}
+                />
+              </Grid>
+              <Grid size={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Kurs Jual"
+                  error={!!errors.rateSell}
+                  helperText={errors.rateSell?.message}
+                  {...register('rateSell')}
+                />
+              </Grid>
+              <Grid size={12}>
+                <Typography variant="body2" color="text.secondary">
+                  Margin: {Number(rateSell) > 0 && Number(rateBuy) > 0
+                    ? (Number(rateSell) - Number(rateBuy)).toLocaleString('id-ID')
+                    : '-'}
+                </Typography>
+              </Grid>
             </Grid>
-            <Grid size={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Kurs Jual"
-                value={rateSell}
-                error={!!errors.rateSell}
-                helperText={errors.rateSell}
-                onChange={(e) => setRateSell(e.target.value)}
-              />
-            </Grid>
-            <Grid size={12}>
-              <Typography variant="body2" color="text.secondary">
-                Margin: {Number(rateSell) > 0 && Number(rateBuy) > 0
-                  ? (Number(rateSell) - Number(rateBuy)).toLocaleString('id-ID')
-                  : '-'}
-              </Typography>
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeEdit}>Batal</Button>
-          <Button variant="contained" onClick={handleSave}>
-            Simpan
-          </Button>
-        </DialogActions>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeEdit}>Batal</Button>
+            <Button type="submit" variant="contained">
+              Simpan
+            </Button>
+          </DialogActions>
+        </form>
       </Dialog>
     </div>
   )

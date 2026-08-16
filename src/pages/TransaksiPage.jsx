@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
+import { yupResolver } from '@hookform/resolvers/yup'
+import * as yup from 'yup'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
@@ -33,14 +36,46 @@ function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
 }
 
+const defaultFormValues = {
+  type: 'buy',
+  currencyId: currencies[0].id,
+  amount: '',
+  rateActual: currencies[0].rateBuy,
+  customer: null,
+  employeeId: '',
+}
+
+const transactionSchema = yup.object({
+  type: yup.string().required(),
+  currencyId: yup.number().required(),
+  amount: yup
+    .number()
+    .typeError('Nominal harus lebih dari 0')
+    .positive('Nominal harus lebih dari 0')
+    .required('Nominal harus lebih dari 0'),
+  rateActual: yup
+    .number()
+    .typeError('Kurs harus lebih dari 0')
+    .positive('Kurs harus lebih dari 0')
+    .required('Kurs harus lebih dari 0'),
+  customer: yup
+    .object()
+    .nullable()
+    .test('required', 'Pilih customer', (v) => !!v),
+  employeeId: yup.number().typeError('Pilih karyawan').required('Pilih karyawan'),
+})
+
 export default function TransaksiPage() {
-  const [type, setType] = useState('buy')
-  const [currencyId, setCurrencyId] = useState(currencies[0].id)
-  const [amount, setAmount] = useState('')
-  const [rateActual, setRateActual] = useState(currencies[0].rateBuy)
-  const [customer, setCustomer] = useState(null)
-  const [employeeId, setEmployeeId] = useState('')
-  const [errors, setErrors] = useState({})
+  const {
+    control,
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    getValues,
+    reset,
+    formState: { errors },
+  } = useForm({ defaultValues: defaultFormValues, resolver: yupResolver(transactionSchema) })
 
   const [customerList, setCustomerList] = useState(initialCustomers)
   const [transactions, setTransactions] = useState(initialTransactions)
@@ -63,59 +98,52 @@ export default function TransaksiPage() {
     setPage(0)
   }
 
+  const type = watch('type')
+  const currencyId = watch('currencyId')
+  const amount = watch('amount')
+  const rateActual = watch('rateActual')
+
   const selectedCurrency = currencies.find((c) => c.id === currencyId)
   const rateDefault = type === 'buy' ? selectedCurrency?.rateBuy : selectedCurrency?.rateSell
   const total = (Number(amount) || 0) * (Number(rateActual) || 0)
 
   function handleCurrencyChange(id) {
-    setCurrencyId(id)
     const c = currencies.find((cur) => cur.id === id)
-    setRateActual(type === 'buy' ? c.rateBuy : c.rateSell)
+    setValue('rateActual', getValues('type') === 'buy' ? c.rateBuy : c.rateSell)
   }
 
-  function handleTypeChange(_, value) {
-    if (!value) return
-    setType(value)
-    setRateActual(value === 'buy' ? selectedCurrency.rateBuy : selectedCurrency.rateSell)
+  function handleTypeChange(value) {
+    const c = currencies.find((cur) => cur.id === getValues('currencyId'))
+    setValue('rateActual', value === 'buy' ? c.rateBuy : c.rateSell)
   }
 
   function handleCustomerAdded(newCustomer) {
     setCustomerList((list) => [...list, newCustomer])
-    setCustomer(newCustomer)
+    setValue('customer', newCustomer)
   }
 
-  function handleSave() {
-    const nextErrors = {}
-    if (!amount || Number(amount) <= 0) nextErrors.amount = 'Nominal harus lebih dari 0'
-    if (!rateActual || Number(rateActual) <= 0) nextErrors.rateActual = 'Kurs harus lebih dari 0'
-    if (!customer) nextErrors.customer = 'Pilih customer'
-    if (!employeeId) nextErrors.employeeId = 'Pilih karyawan'
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
-
-    const employee = employees.find((e) => e.id === employeeId)
+  function onSubmit(data) {
+    const employee = employees.find((e) => e.id === data.employeeId)
     const now = new Date()
+    const totalAmount = Number(data.amount) * Number(data.rateActual)
     const newTransaction = {
       id: Date.now(),
       transactionNumber: `TRX-${now.toISOString().slice(0, 10).replace(/-/g, '')}-${String(transactions.length + 1).padStart(3, '0')}`,
-      type,
+      type: data.type,
       currencyCode: selectedCurrency.code,
-      amount: Number(amount),
-      rateActual: Number(rateActual),
-      totalAmount: total,
-      customerName: customer.name,
+      amount: Number(data.amount),
+      rateActual: Number(data.rateActual),
+      totalAmount,
+      customerName: data.customer.name,
       employeeName: employee.name,
-      requiresReview: total > REVIEW_THRESHOLD,
+      requiresReview: totalAmount > REVIEW_THRESHOLD,
       createdAt: now.toISOString().slice(0, 16).replace('T', ' '),
     }
 
     setTransactions((list) => [newTransaction, ...list])
     setNotaTransaction(newTransaction)
     setNotaOpen(true)
-    setAmount('')
-    setCustomer(null)
-    setEmployeeId('')
-    setErrors({})
+    reset({ ...data, amount: '', customer: null, employeeId: '' })
   }
 
   const filteredTransactions = useMemo(() => {
@@ -147,124 +175,161 @@ export default function TransaksiPage() {
         <Typography variant="h6" className="mb-4">
           Transaksi Baru
         </Typography>
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <ToggleButtonGroup color="primary" exclusive fullWidth value={type} onChange={handleTypeChange}>
-              <ToggleButton value="buy">Beli dari Customer</ToggleButton>
-              <ToggleButton value="sell">Jual ke Customer</ToggleButton>
-            </ToggleButtonGroup>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField
-              select
-              fullWidth
-              label="Mata Uang"
-              value={currencyId}
-              onChange={(e) => handleCurrencyChange(Number(e.target.value))}
-            >
-              {currencies.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.code}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Nominal"
-              value={amount}
-              error={!!errors.amount}
-              helperText={errors.amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </Grid>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <Controller
+                name="type"
+                control={control}
+                render={({ field }) => (
+                  <ToggleButtonGroup
+                    color="primary"
+                    exclusive
+                    fullWidth
+                    value={field.value}
+                    onChange={(_, value) => {
+                      if (!value) return
+                      field.onChange(value)
+                      handleTypeChange(value)
+                    }}
+                  >
+                    <ToggleButton value="buy">Beli dari Customer</ToggleButton>
+                    <ToggleButton value="sell">Jual ke Customer</ToggleButton>
+                  </ToggleButtonGroup>
+                )}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <Controller
+                name="currencyId"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Mata Uang"
+                    {...field}
+                    onChange={(e) => {
+                      const id = Number(e.target.value)
+                      field.onChange(id)
+                      handleCurrencyChange(id)
+                    }}
+                  >
+                    {currencies.map((c) => (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.code}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Nominal"
+                error={!!errors.amount}
+                helperText={errors.amount?.message}
+                {...register('amount')}
+              />
+            </Grid>
 
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField fullWidth label="Kurs Default" value={rateDefault ?? ''} disabled />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Kurs Aktual (Nego)"
-              value={rateActual}
-              error={!!errors.rateActual}
-              helperText={errors.rateActual}
-              onChange={(e) => setRateActual(e.target.value)}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField fullWidth label="Total" value={formatRupiah(total)} disabled />
-          </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField fullWidth label="Kurs Default" value={rateDefault ?? ''} disabled />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Kurs Aktual (Nego)"
+                error={!!errors.rateActual}
+                helperText={errors.rateActual?.message}
+                {...register('rateActual')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField fullWidth label="Total" value={formatRupiah(total)} disabled />
+            </Grid>
 
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Autocomplete
-              options={customerList}
-              filterOptions={customerFilterOptions}
-              getOptionLabel={(c) => `${c.name} — ${c.identityNumber}`}
-              renderOption={(props, c) => (
-                <li {...props} key={c.id}>
-                  <div className="flex flex-col">
-                    <span>{c.name}</span>
-                    <span className="text-xs text-gray-500">
-                      {c.identityNumber} · {c.phone}
-                    </span>
-                  </div>
-                </li>
-              )}
-              value={customer}
-              onChange={(_, value) => setCustomer(value)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Customer"
-                  placeholder="Cari nama, no. identitas, atau no. HP..."
-                  error={!!errors.customer}
-                  helperText={errors.customer}
-                />
-              )}
-              noOptionsText="Nasabah tidak ditemukan — klik + Nasabah Baru"
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <Button variant="outlined" fullWidth sx={{ height: '100%' }} onClick={() => setQuickAddOpen(true)}>
-              + Nasabah Baru
-            </Button>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <TextField
-              select
-              fullWidth
-              label="Dilayani oleh"
-              value={employeeId}
-              error={!!errors.employeeId}
-              helperText={errors.employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-            >
-              {activeEmployees.map((e) => (
-                <MenuItem key={e.id} value={e.id}>
-                  {e.name} — {e.position}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Controller
+                name="customer"
+                control={control}
+                render={({ field }) => (
+                  <Autocomplete
+                    options={customerList}
+                    filterOptions={customerFilterOptions}
+                    getOptionLabel={(c) => `${c.name} — ${c.identityNumber}`}
+                    renderOption={(props, c) => (
+                      <li {...props} key={c.id}>
+                        <div className="flex flex-col">
+                          <span>{c.name}</span>
+                          <span className="text-xs text-gray-500">
+                            {c.identityNumber} · {c.phone}
+                          </span>
+                        </div>
+                      </li>
+                    )}
+                    value={field.value}
+                    onChange={(_, value) => field.onChange(value)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Customer"
+                        placeholder="Cari nama, no. identitas, atau no. HP..."
+                        error={!!errors.customer}
+                        helperText={errors.customer?.message}
+                      />
+                    )}
+                    noOptionsText="Nasabah tidak ditemukan — klik + Nasabah Baru"
+                  />
+                )}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 3 }}>
+              <Button variant="outlined" fullWidth sx={{ height: '100%' }} onClick={() => setQuickAddOpen(true)}>
+                + Nasabah Baru
+              </Button>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 3 }}>
+              <Controller
+                name="employeeId"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Dilayani oleh"
+                    error={!!errors.employeeId}
+                    helperText={errors.employeeId?.message}
+                    {...field}
+                  >
+                    {activeEmployees.map((e) => (
+                      <MenuItem key={e.id} value={e.id}>
+                        {e.name} — {e.position}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
+              />
+            </Grid>
 
-          <Grid size={12} className="flex justify-end gap-2">
-            <Button
-              variant="outlined"
-              startIcon={<PrintIcon />}
-              disabled={!notaTransaction}
-              onClick={() => setNotaOpen(true)}
-            >
-              Cetak Nota
-            </Button>
-            <Button variant="contained" onClick={handleSave}>
-              Simpan
-            </Button>
+            <Grid size={12} className="flex justify-end gap-2">
+              <Button
+                variant="outlined"
+                startIcon={<PrintIcon />}
+                disabled={!notaTransaction}
+                onClick={() => setNotaOpen(true)}
+              >
+                Cetak Nota
+              </Button>
+              <Button type="submit" variant="contained">
+                Simpan
+              </Button>
+            </Grid>
           </Grid>
-        </Grid>
+        </form>
       </Paper>
 
       <Paper className="p-6">
