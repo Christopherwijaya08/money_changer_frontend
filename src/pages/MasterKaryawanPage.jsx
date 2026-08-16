@@ -10,8 +10,14 @@ import TableRow from '@mui/material/TableRow'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import Chip from '@mui/material/Chip'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogContentText from '@mui/material/DialogContentText'
+import DialogActions from '@mui/material/DialogActions'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import EditIcon from '@mui/icons-material/Edit'
+import PersonOffIcon from '@mui/icons-material/PersonOff'
 import { employees as initialEmployees } from '../mocks/data'
 import EmployeeFormDialog from '../components/EmployeeFormDialog'
 
@@ -19,6 +25,7 @@ export default function MasterKaryawanPage() {
   const [employees, setEmployees] = useState(initialEmployees)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState(null)
+  const [deactivatingEmployee, setDeactivatingEmployee] = useState(null)
 
   function openAdd() {
     setEditingEmployee(null)
@@ -35,6 +42,13 @@ export default function MasterKaryawanPage() {
       const exists = list.some((e) => e.id === saved.id)
       return exists ? list.map((e) => (e.id === saved.id ? saved : e)) : [saved, ...list]
     })
+  }
+
+  function confirmDeactivate() {
+    setEmployees((list) =>
+      list.map((e) => (e.id === deactivatingEmployee.id ? { ...e, isActive: false } : e))
+    )
+    setDeactivatingEmployee(null)
   }
 
   return (
@@ -75,6 +89,15 @@ export default function MasterKaryawanPage() {
                     <IconButton size="small" aria-label={`Edit ${e.name}`} onClick={() => openEdit(e)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
+                    {e.isActive && (
+                      <IconButton
+                        size="small"
+                        aria-label={`Nonaktifkan ${e.name}`}
+                        onClick={() => setDeactivatingEmployee(e)}
+                      >
+                        <PersonOffIcon fontSize="small" />
+                      </IconButton>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -89,6 +112,22 @@ export default function MasterKaryawanPage() {
         onSave={handleSave}
         employee={editingEmployee}
       />
+
+      <Dialog open={!!deactivatingEmployee} onClose={() => setDeactivatingEmployee(null)}>
+        <DialogTitle>Nonaktifkan Karyawan</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Yakin ingin menonaktifkan {deactivatingEmployee?.name}? Karyawan nonaktif tidak akan muncul
+            sebagai pilihan "Dilayani oleh" saat input transaksi baru.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeactivatingEmployee(null)}>Batal</Button>
+          <Button color="error" variant="contained" onClick={confirmDeactivate}>
+            Nonaktifkan
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   )
 }
