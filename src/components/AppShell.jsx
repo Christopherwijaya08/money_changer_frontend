@@ -12,6 +12,8 @@ import Box from '@mui/material/Box'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { useLocation, useNavigate } from 'react-router-dom'
+import BranchSelector from './BranchSelector'
+import { branches } from '../mocks/data'
 
 const DRAWER_WIDTH = 250
 
@@ -23,17 +25,17 @@ const menuGroups = [
   {
     title: 'Master Data',
     items: [
-      { label: 'Master Kurs', path: '/master-kurs', active: true },
-      { label: 'Nasabah', path: '/nasabah', active: true },
-      { label: 'Karyawan', path: '/karyawan', active: true },
-      { label: 'Cabang', path: '/cabang', active: true },
+      { label: 'Master Kurs', path: '/exchange-rates', active: true },
+      { label: 'Nasabah', path: '/customers', active: true },
+      { label: 'Karyawan', path: '/employees', active: true },
+      { label: 'Cabang', path: '/branches', active: true },
     ],
   },
   {
     title: 'Keuangan',
     items: [
-      { label: 'Kas', path: '/kas', active: false },
-      { label: 'Laporan', path: '/laporan', active: false },
+      { label: 'Kas', path: '/cash', active: false },
+      { label: 'Laporan', path: '/reports', active: false },
     ],
   },
   {
@@ -48,6 +50,9 @@ export default function AppShell({ children }) {
   const [openGroups, setOpenGroups] = useState(() =>
     Object.fromEntries(menuGroups.map((g) => [g.title, true]))
   )
+  const [selectedBranchId, setSelectedBranchId] = useState(
+    () => branches.find((b) => b.isActive)?.id ?? ''
+  )
 
   function toggleGroup(title) {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }))
@@ -56,10 +61,13 @@ export default function AppShell({ children }) {
   return (
     <Box sx={{ display: 'flex' }}>
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Toolbar>
+        <Toolbar sx={{ justifyContent: 'space-between' }}>
           <Typography variant="h6" noWrap component="div">
             Money Changer
           </Typography>
+          <Box sx={{ '& .MuiInputBase-root': { color: 'inherit' }, '& .MuiInputLabel-root': { color: 'inherit' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.5)' } }}>
+            <BranchSelector value={selectedBranchId} onChange={setSelectedBranchId} />
+          </Box>
         </Toolbar>
       </AppBar>
       <Drawer

@@ -20,7 +20,7 @@ import { customers as initialCustomers } from '../mocks/data'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerDetailDialog from '../components/CustomerDetailDialog'
 
-export default function MasterNasabahPage() {
+export default function CustomerPage() {
   const [customerList, setCustomerList] = useState(initialCustomers)
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -61,7 +61,7 @@ export default function MasterNasabahPage() {
         <Typography variant="h5" component="h1" className="font-medium">
           Master Nasabah
         </Typography>
-        <Button component={Link} to="/nasabah/threshold" startIcon={<SettingsIcon />} size="small">
+        <Button component={Link} to="/customers/threshold" startIcon={<SettingsIcon />} size="small">
           Pengaturan Threshold
         </Button>
       </div>
@@ -97,7 +97,7 @@ export default function MasterNasabahPage() {
               {filteredCustomers.map((c) => (
                 <TableRow key={c.id} hover>
                   <TableCell>
-                    <Avatar variant="rounded" src={c.ktpPhotoUrl} sx={{ width: 48, height: 36 }}>
+                    <Avatar variant="rounded" src={c.idPhotoUrl} sx={{ width: 48, height: 36 }}>
                       KTP
                     </Avatar>
                   </TableCell>

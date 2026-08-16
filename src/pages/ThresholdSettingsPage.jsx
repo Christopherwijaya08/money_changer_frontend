@@ -39,7 +39,7 @@ export default function ThresholdSettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Button component={Link} to="/nasabah" startIcon={<ArrowBackIcon />} size="small">
+        <Button component={Link} to="/customers" startIcon={<ArrowBackIcon />} size="small">
           Kembali ke Nasabah
         </Button>
       </div>

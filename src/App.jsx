@@ -1,22 +1,22 @@
 import { Route, Routes } from 'react-router-dom'
 import AppShell from './components/AppShell'
-import TransaksiPage from './pages/TransaksiPage'
-import MasterKursPage from './pages/MasterKursPage'
-import MasterNasabahPage from './pages/MasterNasabahPage'
+import TransactionPage from './pages/TransactionPage'
+import ExchangeRatePage from './pages/ExchangeRatePage'
+import CustomerPage from './pages/CustomerPage'
 import ThresholdSettingsPage from './pages/ThresholdSettingsPage'
-import MasterKaryawanPage from './pages/MasterKaryawanPage'
-import MasterCabangPage from './pages/MasterCabangPage'
+import EmployeePage from './pages/EmployeePage'
+import BranchPage from './pages/BranchPage'
 
 function App() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<TransaksiPage />} />
-        <Route path="/master-kurs" element={<MasterKursPage />} />
-        <Route path="/nasabah" element={<MasterNasabahPage />} />
-        <Route path="/nasabah/threshold" element={<ThresholdSettingsPage />} />
-        <Route path="/karyawan" element={<MasterKaryawanPage />} />
-        <Route path="/cabang" element={<MasterCabangPage />} />
+        <Route path="/" element={<TransactionPage />} />
+        <Route path="/exchange-rates" element={<ExchangeRatePage />} />
+        <Route path="/customers" element={<CustomerPage />} />
+        <Route path="/customers/threshold" element={<ThresholdSettingsPage />} />
+        <Route path="/employees" element={<EmployeePage />} />
+        <Route path="/branches" element={<BranchPage />} />
       </Routes>
     </AppShell>
   )

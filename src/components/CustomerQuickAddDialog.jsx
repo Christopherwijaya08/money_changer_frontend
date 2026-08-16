@@ -9,7 +9,7 @@ import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Grid from '@mui/material/Grid'
-import KtpPhotoUpload from './KtpPhotoUpload'
+import IdPhotoUpload from './IdPhotoUpload'
 
 const emptyForm = { name: '', identityNumber: '', address: '', phone: '' }
 
@@ -38,7 +38,7 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
     reset,
     formState: { errors },
   } = useForm({ defaultValues: emptyForm, resolver: yupResolver(customerSchema) })
-  const [ktpPreview, setKtpPreview] = useState(null)
+  const [idPreview, setIdPreview] = useState(null)
 
   const isEditing = !!customer
 
@@ -54,7 +54,7 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
           }
         : emptyForm
     )
-    setKtpPreview(customer?.ktpPhotoUrl ?? null)
+    setIdPreview(customer?.idPhotoUrl ?? null)
   }, [open, customer, reset])
 
   function handleClose() {
@@ -62,7 +62,7 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
   }
 
   function onSubmit(data) {
-    onAdd({ id: customer?.id ?? Date.now(), ...data, ktpPhotoUrl: ktpPreview })
+    onAdd({ id: customer?.id ?? Date.now(), ...data, idPhotoUrl: idPreview })
     handleClose()
   }
 
@@ -103,7 +103,7 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
               <TextField fullWidth label="Alamat" multiline minRows={2} {...register('address')} />
             </Grid>
             <Grid size={12}>
-              <KtpPhotoUpload value={ktpPreview} onChange={setKtpPreview} />
+              <IdPhotoUpload value={idPreview} onChange={setIdPreview} />
             </Grid>
           </Grid>
         </DialogContent>

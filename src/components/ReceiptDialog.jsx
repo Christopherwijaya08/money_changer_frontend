@@ -17,13 +17,13 @@ function Row({ label, value, strong }) {
   )
 }
 
-export default function NotaDialog({ open, onClose, transaction }) {
+export default function ReceiptDialog({ open, onClose, transaction }) {
   if (!transaction) return null
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogContent>
-        <div id="nota-print-area" className="flex flex-col gap-1 font-mono text-sm">
+        <div id="receipt-print-area" className="flex flex-col gap-1 font-mono text-sm">
           <div className="text-center mb-2">
             <div className="text-base font-bold">MONEY CHANGER</div>
             <div>Nota Transaksi Penukaran Valas</div>

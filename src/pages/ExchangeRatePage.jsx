@@ -39,7 +39,7 @@ const rateSchema = yup.object({
     }),
 })
 
-export default function MasterKursPage() {
+export default function ExchangeRatePage() {
   const [currencies, setCurrencies] = useState(initialCurrencies)
   const [history, setHistory] = useState(initialHistory)
   const [editing, setEditing] = useState(null)

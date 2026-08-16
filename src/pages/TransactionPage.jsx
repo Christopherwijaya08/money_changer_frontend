@@ -25,7 +25,7 @@ import PrintIcon from '@mui/icons-material/Print'
 import { currencies, customers as initialCustomers, employees, transactions as initialTransactions } from '../mocks/data'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerSearchField from '../components/CustomerSearchField'
-import NotaDialog from '../components/NotaDialog'
+import ReceiptDialog from '../components/ReceiptDialog'
 
 const REVIEW_THRESHOLD = 50000000
 
@@ -64,7 +64,7 @@ const transactionSchema = yup.object({
   employeeId: yup.number().typeError('Pilih karyawan').required('Pilih karyawan'),
 })
 
-export default function TransaksiPage() {
+export default function TransactionPage() {
   const {
     control,
     register,
@@ -79,8 +79,8 @@ export default function TransaksiPage() {
   const [customerList, setCustomerList] = useState(initialCustomers)
   const [transactions, setTransactions] = useState(initialTransactions)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
-  const [notaTransaction, setNotaTransaction] = useState(null)
-  const [notaOpen, setNotaOpen] = useState(false)
+  const [receiptTransaction, setReceiptTransaction] = useState(null)
+  const [receiptOpen, setReceiptOpen] = useState(false)
 
   const [filterEmployee, setFilterEmployee] = useState('')
   const [filterCurrency, setFilterCurrency] = useState('')
@@ -142,8 +142,8 @@ export default function TransaksiPage() {
     }
 
     setTransactions((list) => [newTransaction, ...list])
-    setNotaTransaction(newTransaction)
-    setNotaOpen(true)
+    setReceiptTransaction(newTransaction)
+    setReceiptOpen(true)
     reset({ ...data, amount: '', customer: null, employeeId: '' })
   }
 
@@ -310,8 +310,8 @@ export default function TransaksiPage() {
               <Button
                 variant="outlined"
                 startIcon={<PrintIcon />}
-                disabled={!notaTransaction}
-                onClick={() => setNotaOpen(true)}
+                disabled={!receiptTransaction}
+                onClick={() => setReceiptOpen(true)}
               >
                 Cetak Nota
               </Button>
@@ -478,7 +478,7 @@ export default function TransaksiPage() {
         onClose={() => setQuickAddOpen(false)}
         onAdd={handleCustomerAdded}
       />
-      <NotaDialog open={notaOpen} onClose={() => setNotaOpen(false)} transaction={notaTransaction} />
+      <ReceiptDialog open={receiptOpen} onClose={() => setReceiptOpen(false)} transaction={receiptTransaction} />
     </div>
   )
 }

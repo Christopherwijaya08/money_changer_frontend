@@ -21,7 +21,7 @@ import BlockIcon from '@mui/icons-material/Block'
 import { branches as initialBranches } from '../mocks/data'
 import BranchFormDialog from '../components/BranchFormDialog'
 
-export default function MasterCabangPage() {
+export default function BranchPage() {
   const [branches, setBranches] = useState(initialBranches)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingBranch, setEditingBranch] = useState(null)

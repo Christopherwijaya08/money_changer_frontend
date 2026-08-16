@@ -22,7 +22,7 @@ import PersonOffIcon from '@mui/icons-material/PersonOff'
 import { employees as initialEmployees } from '../mocks/data'
 import EmployeeFormDialog from '../components/EmployeeFormDialog'
 
-export default function MasterKaryawanPage() {
+export default function EmployeePage() {
   const [employees, setEmployees] = useState(initialEmployees)
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
