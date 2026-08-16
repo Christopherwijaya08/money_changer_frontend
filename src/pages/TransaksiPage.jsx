@@ -18,6 +18,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TablePagination from '@mui/material/TablePagination'
 import Chip from '@mui/material/Chip'
+import Alert from '@mui/material/Alert'
 import PrintIcon from '@mui/icons-material/Print'
 import { currencies, customers as initialCustomers, employees, transactions as initialTransactions } from '../mocks/data'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
@@ -247,6 +248,15 @@ export default function TransaksiPage() {
             <Grid size={{ xs: 12, sm: 4 }}>
               <TextField fullWidth label="Total" value={formatRupiah(total)} disabled />
             </Grid>
+
+            {total > REVIEW_THRESHOLD && (
+              <Grid size={12}>
+                <Alert severity="warning">
+                  Transaksi ini melebihi batas Rp {REVIEW_THRESHOLD.toLocaleString('id-ID')} dan akan otomatis
+                  ditandai "Perlu Review".
+                </Alert>
+              </Grid>
+            )}
 
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller
