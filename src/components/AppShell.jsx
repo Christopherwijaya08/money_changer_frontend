@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
@@ -5,24 +6,51 @@ import Drawer from '@mui/material/Drawer'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
+import Collapse from '@mui/material/Collapse'
+import Divider from '@mui/material/Divider'
 import Box from '@mui/material/Box'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-const DRAWER_WIDTH = 220
+const DRAWER_WIDTH = 250
 
-const menuItems = [
-  { label: 'Transaksi', path: '/', active: true },
-  { label: 'Master Kurs', path: '/master-kurs', active: true },
-  { label: 'Nasabah', path: '/nasabah', active: true },
-  { label: 'Karyawan', path: '/karyawan', active: false },
-  { label: 'Kas', path: '/kas', active: false },
-  { label: 'Laporan', path: '/laporan', active: false },
-  { label: 'Dashboard', path: '/dashboard', active: false },
+const menuGroups = [
+  {
+    title: 'Operasional',
+    items: [{ label: 'Transaksi', path: '/', active: true }],
+  },
+  {
+    title: 'Master Data',
+    items: [
+      { label: 'Master Kurs', path: '/master-kurs', active: true },
+      { label: 'Nasabah', path: '/nasabah', active: true },
+      { label: 'Karyawan', path: '/karyawan', active: false },
+    ],
+  },
+  {
+    title: 'Keuangan',
+    items: [
+      { label: 'Kas', path: '/kas', active: false },
+      { label: 'Laporan', path: '/laporan', active: false },
+    ],
+  },
+  {
+    title: 'Ringkasan',
+    items: [{ label: 'Dashboard', path: '/dashboard', active: false }],
+  },
 ]
 
 export default function AppShell({ children }) {
   const location = useLocation()
   const navigate = useNavigate()
+  const [openGroups, setOpenGroups] = useState(() =>
+    Object.fromEntries(menuGroups.map((g) => [g.title, true]))
+  )
+
+  function toggleGroup(title) {
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }))
+  }
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -42,16 +70,36 @@ export default function AppShell({ children }) {
         }}
       >
         <Toolbar />
-        <List>
-          {menuItems.map((item) => (
-            <ListItemButton
-              key={item.label}
-              selected={location.pathname === item.path}
-              disabled={!item.active}
-              onClick={() => navigate(item.path)}
-            >
-              <ListItemText primary={item.label} />
-            </ListItemButton>
+        <List component="nav">
+          {menuGroups.map((group, index) => (
+            <div key={group.title}>
+              {index > 0 && <Divider />}
+              <ListItemButton onClick={() => toggleGroup(group.title)}>
+                <ListItemText
+                  primary={group.title}
+                  slotProps={{ primary: { sx: { fontSize: '1rem', fontWeight: 700 } } }}
+                />
+                {openGroups[group.title] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </ListItemButton>
+              <Collapse in={openGroups[group.title]} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                  {group.items.map((item) => (
+                    <ListItemButton
+                      key={item.label}
+                      sx={{ pl: 4 }}
+                      selected={location.pathname === item.path}
+                      disabled={!item.active}
+                      onClick={() => navigate(item.path)}
+                    >
+                      <ListItemText
+                        primary={item.label}
+                        slotProps={{ primary: { sx: { fontSize: '0.875rem' } } }}
+                      />
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Collapse>
+            </div>
           ))}
         </List>
       </Drawer>
