@@ -9,7 +9,6 @@ import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete'
 import Button from '@mui/material/Button'
 import Table from '@mui/material/Table'
 import TableHead from '@mui/material/TableHead'
@@ -22,13 +21,10 @@ import Chip from '@mui/material/Chip'
 import PrintIcon from '@mui/icons-material/Print'
 import { currencies, customers as initialCustomers, employees, transactions as initialTransactions } from '../mocks/data'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
+import CustomerSearchField from '../components/CustomerSearchField'
 import NotaDialog from '../components/NotaDialog'
 
 const REVIEW_THRESHOLD = 50000000
-
-const customerFilterOptions = createFilterOptions({
-  stringify: (c) => `${c.name} ${c.identityNumber} ${c.phone}`,
-})
 
 const activeEmployees = employees.filter((e) => e.isActive)
 
@@ -257,32 +253,12 @@ export default function TransaksiPage() {
                 name="customer"
                 control={control}
                 render={({ field }) => (
-                  <Autocomplete
+                  <CustomerSearchField
                     options={customerList}
-                    filterOptions={customerFilterOptions}
-                    getOptionLabel={(c) => `${c.name} — ${c.identityNumber}`}
-                    renderOption={(props, c) => (
-                      <li {...props} key={c.id}>
-                        <div className="flex flex-col">
-                          <span>{c.name}</span>
-                          <span className="text-xs text-gray-500">
-                            {c.identityNumber} · {c.phone}
-                          </span>
-                        </div>
-                      </li>
-                    )}
                     value={field.value}
-                    onChange={(_, value) => field.onChange(value)}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Customer"
-                        placeholder="Cari nama, no. identitas, atau no. HP..."
-                        error={!!errors.customer}
-                        helperText={errors.customer?.message}
-                      />
-                    )}
-                    noOptionsText="Nasabah tidak ditemukan — klik + Nasabah Baru"
+                    onChange={field.onChange}
+                    error={!!errors.customer}
+                    helperText={errors.customer?.message}
                   />
                 )}
               />
