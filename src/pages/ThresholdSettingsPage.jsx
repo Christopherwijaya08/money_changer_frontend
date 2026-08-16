@@ -59,7 +59,7 @@ export default function ThresholdSettingsPage() {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)} style={{ marginTop: '16px' }}>
           <Grid container spacing={2}>
             <Grid size={12}>
               <TextField
