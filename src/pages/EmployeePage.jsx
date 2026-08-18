@@ -10,7 +10,6 @@ import TableBody from '@mui/material/TableBody'
 import TableRow from '@mui/material/TableRow'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
-import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -21,6 +20,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import PersonOffIcon from '@mui/icons-material/PersonOff'
 import { employees as initialEmployees } from '../mocks/data'
 import EmployeeFormDialog from '../components/EmployeeFormDialog'
+import StatusChip from '../components/StatusChip'
 import { useBranch } from '../context/BranchContext'
 
 export default function EmployeePage() {
@@ -109,11 +109,7 @@ export default function EmployeePage() {
                   <TableCell>{e.name}</TableCell>
                   <TableCell>{e.position}</TableCell>
                   <TableCell>
-                    <Chip
-                      label={e.isActive ? 'Aktif' : 'Nonaktif'}
-                      color={e.isActive ? 'success' : 'default'}
-                      size="small"
-                    />
+                    <StatusChip active={e.isActive} />
                   </TableCell>
                   <TableCell align="right">
                     <IconButton size="small" aria-label={`Edit ${e.name}`} onClick={() => openEdit(e)}>

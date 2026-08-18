@@ -9,7 +9,6 @@ import TableBody from '@mui/material/TableBody'
 import TableRow from '@mui/material/TableRow'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
-import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -20,6 +19,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import BlockIcon from '@mui/icons-material/Block'
 import { branches as initialBranches } from '../mocks/data'
 import BranchFormDialog from '../components/BranchFormDialog'
+import StatusChip from '../components/StatusChip'
 
 export default function BranchPage() {
   const [branches, setBranches] = useState(initialBranches)
@@ -79,11 +79,7 @@ export default function BranchPage() {
                   <TableCell>{b.name}</TableCell>
                   <TableCell>{b.address}</TableCell>
                   <TableCell>
-                    <Chip
-                      label={b.isActive ? 'Aktif' : 'Nonaktif'}
-                      color={b.isActive ? 'success' : 'default'}
-                      size="small"
-                    />
+                    <StatusChip active={b.isActive} />
                   </TableCell>
                   <TableCell align="right">
                     <IconButton size="small" aria-label={`Edit ${b.name}`} onClick={() => openEdit(b)}>

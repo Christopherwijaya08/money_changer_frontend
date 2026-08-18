@@ -9,11 +9,11 @@ import TableBody from '@mui/material/TableBody'
 import TableRow from '@mui/material/TableRow'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
-import Chip from '@mui/material/Chip'
 import AddCircleIcon from '@mui/icons-material/AddCircle'
 import EditIcon from '@mui/icons-material/Edit'
 import { currencies as initialCurrencies } from '../mocks/data'
 import CurrencyFormDialog from '../components/CurrencyFormDialog'
+import StatusChip from '../components/StatusChip'
 
 export default function CurrencyPage() {
   const [currencies, setCurrencies] = useState(initialCurrencies)
@@ -65,11 +65,7 @@ export default function CurrencyPage() {
                   <TableCell>{c.code}</TableCell>
                   <TableCell>{c.name}</TableCell>
                   <TableCell>
-                    <Chip
-                      label={c.isActive ? 'Aktif' : 'Nonaktif'}
-                      color={c.isActive ? 'success' : 'default'}
-                      size="small"
-                    />
+                    <StatusChip active={c.isActive} />
                   </TableCell>
                   <TableCell align="right">
                     <IconButton size="small" aria-label={`Edit ${c.name}`} onClick={() => openEdit(c)}>
