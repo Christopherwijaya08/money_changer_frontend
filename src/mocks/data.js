@@ -81,6 +81,7 @@ export const transactions = [
     employeeName: 'Dewi Anggraini',
     requiresReview: false,
     createdAt: '2026-08-16 09:12',
+    branchId: 1,
   },
   {
     id: 2,
@@ -94,6 +95,7 @@ export const transactions = [
     employeeName: 'Eko Prasetyo',
     requiresReview: true,
     createdAt: '2026-08-16 10:45',
+    branchId: 2,
   },
   {
     id: 3,
@@ -107,6 +109,7 @@ export const transactions = [
     employeeName: 'Dewi Anggraini',
     requiresReview: false,
     createdAt: '2026-08-15 15:30',
+    branchId: 1,
   },
   {
     id: 4,
@@ -120,6 +123,7 @@ export const transactions = [
     employeeName: 'Fajar Nugroho',
     requiresReview: false,
     createdAt: '2026-08-15 14:02',
+    branchId: 2,
   },
   {
     id: 5,
@@ -133,6 +137,7 @@ export const transactions = [
     employeeName: 'Eko Prasetyo',
     requiresReview: false,
     createdAt: '2026-08-15 11:20',
+    branchId: 1,
   },
   {
     id: 6,
@@ -146,5 +151,6 @@ export const transactions = [
     employeeName: 'Dewi Anggraini',
     requiresReview: true,
     createdAt: '2026-08-14 16:45',
+    branchId: 2,
   },
 ]

@@ -26,6 +26,7 @@ import { currencies, customers as initialCustomers, employees, transactions as i
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerSearchField from '../components/CustomerSearchField'
 import ReceiptDialog from '../components/ReceiptDialog'
+import { useBranch } from '../context/BranchContext'
 
 const REVIEW_THRESHOLD = 50000000
 
@@ -75,6 +76,9 @@ export default function TransactionPage() {
     reset,
     formState: { errors },
   } = useForm({ defaultValues: defaultFormValues, resolver: yupResolver(transactionSchema) })
+
+  const { branches, selectedBranchId } = useBranch()
+  const selectedBranchName = branches.find((b) => b.id === selectedBranchId)?.name
 
   const [customerList, setCustomerList] = useState(initialCustomers)
   const [transactions, setTransactions] = useState(initialTransactions)
@@ -139,6 +143,7 @@ export default function TransactionPage() {
       employeeName: employee.name,
       requiresReview: totalAmount > REVIEW_THRESHOLD,
       createdAt: now.toISOString().slice(0, 16).replace('T', ' '),
+      branchId: selectedBranchId,
     }
 
     setTransactions((list) => [newTransaction, ...list])
@@ -149,6 +154,7 @@ export default function TransactionPage() {
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
+      if (t.branchId !== selectedBranchId) return false
       if (filterEmployee && t.employeeName !== filterEmployee) return false
       if (filterCurrency && t.currencyCode !== filterCurrency) return false
       if (filterCustomer && t.customerName !== filterCustomer) return false
@@ -156,11 +162,11 @@ export default function TransactionPage() {
       if (filterReviewOnly && !t.requiresReview) return false
       return true
     })
-  }, [transactions, filterEmployee, filterCurrency, filterCustomer, filterDate, filterReviewOnly])
+  }, [transactions, selectedBranchId, filterEmployee, filterCurrency, filterCustomer, filterDate, filterReviewOnly])
 
   useEffect(() => {
     setPage(0)
-  }, [filterEmployee, filterCurrency, filterCustomer, filterDate, filterReviewOnly])
+  }, [selectedBranchId, filterEmployee, filterCurrency, filterCustomer, filterDate, filterReviewOnly])
 
   const paginatedTransactions = filteredTransactions.slice(
     page * rowsPerPage,
@@ -327,6 +333,9 @@ export default function TransactionPage() {
         <div className="mb-4">
           <Typography variant="h6">
             Riwayat Transaksi
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Menampilkan transaksi untuk cabang: {selectedBranchName}
           </Typography>
         </div>
         <Grid container spacing={2} className="mb-4">

@@ -13,7 +13,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BranchSelector from './BranchSelector'
-import { branches } from '../mocks/data'
+import { useBranch } from '../context/BranchContext'
 
 const DRAWER_WIDTH = 250
 
@@ -50,9 +50,7 @@ export default function AppShell({ children }) {
   const [openGroups, setOpenGroups] = useState(() =>
     Object.fromEntries(menuGroups.map((g) => [g.title, true]))
   )
-  const [selectedBranchId, setSelectedBranchId] = useState(
-    () => branches.find((b) => b.isActive)?.id ?? ''
-  )
+  const { selectedBranchId, setSelectedBranchId } = useBranch()
 
   function toggleGroup(title) {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }))

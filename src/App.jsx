@@ -6,19 +6,22 @@ import CustomerPage from './pages/CustomerPage'
 import ThresholdSettingsPage from './pages/ThresholdSettingsPage'
 import EmployeePage from './pages/EmployeePage'
 import BranchPage from './pages/BranchPage'
+import { BranchProvider } from './context/BranchContext'
 
 function App() {
   return (
-    <AppShell>
-      <Routes>
-        <Route path="/" element={<TransactionPage />} />
-        <Route path="/exchange-rates" element={<ExchangeRatePage />} />
-        <Route path="/customers" element={<CustomerPage />} />
-        <Route path="/customers/threshold" element={<ThresholdSettingsPage />} />
-        <Route path="/employees" element={<EmployeePage />} />
-        <Route path="/branches" element={<BranchPage />} />
-      </Routes>
-    </AppShell>
+    <BranchProvider>
+      <AppShell>
+        <Routes>
+          <Route path="/" element={<TransactionPage />} />
+          <Route path="/exchange-rates" element={<ExchangeRatePage />} />
+          <Route path="/customers" element={<CustomerPage />} />
+          <Route path="/customers/threshold" element={<ThresholdSettingsPage />} />
+          <Route path="/employees" element={<EmployeePage />} />
+          <Route path="/branches" element={<BranchPage />} />
+        </Routes>
+      </AppShell>
+    </BranchProvider>
   )
 }
 
