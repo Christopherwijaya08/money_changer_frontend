@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import AppShell from './components/AppShell'
 import TransactionPage from './pages/TransactionPage'
+import CurrencyPage from './pages/CurrencyPage'
 import ExchangeRatePage from './pages/ExchangeRatePage'
 import CustomerPage from './pages/CustomerPage'
 import ThresholdSettingsPage from './pages/ThresholdSettingsPage'
@@ -14,6 +15,7 @@ function App() {
       <AppShell>
         <Routes>
           <Route path="/" element={<TransactionPage />} />
+          <Route path="/currencies" element={<CurrencyPage />} />
           <Route path="/exchange-rates" element={<ExchangeRatePage />} />
           <Route path="/customers" element={<CustomerPage />} />
           <Route path="/customers/threshold" element={<ThresholdSettingsPage />} />

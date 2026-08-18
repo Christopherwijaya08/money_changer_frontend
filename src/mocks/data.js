@@ -1,9 +1,9 @@
 export const currencies = [
-  { id: 1, code: 'USD', rateBuy: 15750, rateSell: 15850, updatedAt: '2026-08-16 08:00', updatedBy: 'Admin' },
-  { id: 2, code: 'SGD', rateBuy: 11600, rateSell: 11750, updatedAt: '2026-08-16 08:00', updatedBy: 'Admin' },
-  { id: 3, code: 'EUR', rateBuy: 16900, rateSell: 17100, updatedAt: '2026-08-15 08:00', updatedBy: 'Owner' },
-  { id: 4, code: 'JPY', rateBuy: 103, rateSell: 106, updatedAt: '2026-08-15 08:00', updatedBy: 'Owner' },
-  { id: 5, code: 'AUD', rateBuy: 10200, rateSell: 10400, updatedAt: '2026-08-14 08:00', updatedBy: 'Admin' },
+  { id: 1, code: 'USD', name: 'Dolar Amerika Serikat', isActive: true, rateBuy: 15750, rateSell: 15850, updatedAt: '2026-08-16 08:00', updatedBy: 'Admin' },
+  { id: 2, code: 'SGD', name: 'Dolar Singapura', isActive: true, rateBuy: 11600, rateSell: 11750, updatedAt: '2026-08-16 08:00', updatedBy: 'Admin' },
+  { id: 3, code: 'EUR', name: 'Euro', isActive: true, rateBuy: 16900, rateSell: 17100, updatedAt: '2026-08-15 08:00', updatedBy: 'Owner' },
+  { id: 4, code: 'JPY', name: 'Yen Jepang', isActive: true, rateBuy: 103, rateSell: 106, updatedAt: '2026-08-15 08:00', updatedBy: 'Owner' },
+  { id: 5, code: 'AUD', name: 'Dolar Australia', isActive: false, rateBuy: 10200, rateSell: 10400, updatedAt: '2026-08-14 08:00', updatedBy: 'Admin' },
 ]
 
 export const exchangeRateHistory = [

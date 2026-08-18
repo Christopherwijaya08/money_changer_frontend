@@ -25,6 +25,7 @@ const menuGroups = [
   {
     title: 'Master Data',
     items: [
+      { label: 'Mata Uang', path: '/currencies', active: true },
       { label: 'Master Kurs', path: '/exchange-rates', active: true },
       { label: 'Nasabah', path: '/customers', active: true },
       { label: 'Karyawan', path: '/employees', active: true },
