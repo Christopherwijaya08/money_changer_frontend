@@ -21,8 +21,12 @@ import EditIcon from '@mui/icons-material/Edit'
 import PersonOffIcon from '@mui/icons-material/PersonOff'
 import { employees as initialEmployees } from '../mocks/data'
 import EmployeeFormDialog from '../components/EmployeeFormDialog'
+import { useBranch } from '../context/BranchContext'
 
 export default function EmployeePage() {
+  const { branches, selectedBranchId } = useBranch()
+  const selectedBranchName = branches.find((b) => b.id === selectedBranchId)?.name
+
   const [employees, setEmployees] = useState(initialEmployees)
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -31,9 +35,12 @@ export default function EmployeePage() {
 
   const filteredEmployees = useMemo(() => {
     const needle = search.trim().toLowerCase()
-    if (!needle) return employees
-    return employees.filter((e) => e.name.toLowerCase().includes(needle))
-  }, [employees, search])
+    return employees.filter((e) => {
+      if (e.branchId !== selectedBranchId) return false
+      if (needle && !e.name.toLowerCase().includes(needle)) return false
+      return true
+    })
+  }, [employees, search, selectedBranchId])
 
   function openAdd() {
     setEditingEmployee(null)
@@ -48,7 +55,8 @@ export default function EmployeePage() {
   function handleSave(saved) {
     setEmployees((list) => {
       const exists = list.some((e) => e.id === saved.id)
-      return exists ? list.map((e) => (e.id === saved.id ? saved : e)) : [saved, ...list]
+      if (exists) return list.map((e) => (e.id === saved.id ? saved : e))
+      return [{ ...saved, branchId: selectedBranchId }, ...list]
     })
   }
 
@@ -67,14 +75,19 @@ export default function EmployeePage() {
 
       <Paper className="p-6">
         <div className="flex items-center justify-between gap-4 mb-4">
-          <TextField
-            size="small"
-            label="Cari karyawan"
-            placeholder="Cari nama karyawan..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            sx={{ minWidth: 320 }}
-          />
+          <div>
+            <TextField
+              size="small"
+              label="Cari karyawan"
+              placeholder="Cari nama karyawan..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              sx={{ minWidth: 320 }}
+            />
+            <Typography variant="body2" color="text.secondary" className="mt-2">
+              Menampilkan karyawan untuk cabang: {selectedBranchName}
+            </Typography>
+          </div>
           <Button variant="contained" startIcon={<PersonAddAlt1Icon />} onClick={openAdd}>
             Tambah Karyawan
           </Button>

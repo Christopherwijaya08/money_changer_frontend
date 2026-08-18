@@ -56,10 +56,10 @@ export const customers = [
 ]
 
 export const employees = [
-  { id: 1, name: 'Dewi Anggraini', position: 'Teller', isActive: true },
-  { id: 2, name: 'Eko Prasetyo', position: 'Teller', isActive: true },
-  { id: 3, name: 'Fajar Nugroho', position: 'Supervisor', isActive: true },
-  { id: 4, name: 'Guntur Saputra', position: 'Teller', isActive: false },
+  { id: 1, name: 'Dewi Anggraini', position: 'Teller', isActive: true, branchId: 1 },
+  { id: 2, name: 'Eko Prasetyo', position: 'Teller', isActive: true, branchId: 2 },
+  { id: 3, name: 'Fajar Nugroho', position: 'Supervisor', isActive: true, branchId: 1 },
+  { id: 4, name: 'Guntur Saputra', position: 'Teller', isActive: false, branchId: 2 },
 ]
 
 export const branches = [
