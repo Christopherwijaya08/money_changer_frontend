@@ -3,6 +3,7 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
+import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
 import TableHead from '@mui/material/TableHead'
 import TableBody from '@mui/material/TableBody'
@@ -37,6 +38,12 @@ export default function CurrencyPage() {
     })
   }
 
+  function handleToggleActive(currency) {
+    setCurrencies((list) =>
+      list.map((c) => (c.id === currency.id ? { ...c, isActive: !c.isActive } : c))
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -68,6 +75,12 @@ export default function CurrencyPage() {
                     <StatusChip active={c.isActive} />
                   </TableCell>
                   <TableCell align="right">
+                    <Switch
+                      size="small"
+                      checked={c.isActive}
+                      onChange={() => handleToggleActive(c)}
+                      aria-label={`Ubah status ${c.name}`}
+                    />
                     <IconButton size="small" aria-label={`Edit ${c.name}`} onClick={() => openEdit(c)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
