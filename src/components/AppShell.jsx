@@ -57,7 +57,7 @@ const menuGroups = [
   },
   {
     title: 'Ringkasan',
-    items: [{ label: 'Dashboard', path: '/dashboard', active: false, icon: SpaceDashboardIcon }],
+    items: [{ label: 'Dashboard', path: '/dashboard', active: true, icon: SpaceDashboardIcon }],
   },
 ]
 

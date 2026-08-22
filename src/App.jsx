@@ -9,6 +9,7 @@ import EmployeePage from './pages/EmployeePage'
 import BranchPage from './pages/BranchPage'
 import CashPage from './pages/CashPage'
 import ReportPage from './pages/ReportPage'
+import DashboardPage from './pages/DashboardPage'
 import { BranchProvider } from './context/BranchContext'
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="/branches" element={<BranchPage />} />
           <Route path="/cash" element={<CashPage />} />
           <Route path="/reports" element={<ReportPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
         </Routes>
       </AppShell>
     </BranchProvider>
