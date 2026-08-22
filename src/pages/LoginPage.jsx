@@ -11,7 +11,10 @@ import Box from '@mui/material/Box'
 import { useAuth } from '../context/AuthContext'
 
 // ponytail: hardcoded until the real login API (Fase 5 backend) lands
-const MOCK_ADMIN = { email: 'admin@moneychanger.test', password: 'admin123' }
+const MOCK_ACCOUNTS = [
+  { email: 'admin@moneychanger.test', password: 'admin123', role: 'admin' },
+  { email: 'owner@moneychanger.test', password: 'owner123', role: 'owner' },
+]
 
 const schema = yup.object({
   email: yup.string().email('Format email tidak valid').required('Email wajib diisi'),
@@ -35,8 +38,9 @@ export default function LoginPage() {
   }
 
   function onSubmit(data) {
-    if (data.email === MOCK_ADMIN.email && data.password === MOCK_ADMIN.password) {
-      login()
+    const account = MOCK_ACCOUNTS.find((a) => a.email === data.email && a.password === data.password)
+    if (account) {
+      login(account.role)
       return
     }
     setError('root', { message: 'Email atau kata sandi salah.' })

@@ -26,9 +26,11 @@ import StorefrontIcon from '@mui/icons-material/Storefront'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import SpaceDashboardIcon from '@mui/icons-material/SpaceDashboard'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BranchSelector from './BranchSelector'
 import { useBranch } from '../context/BranchContext'
+import { useAuth } from '../context/AuthContext'
 
 const DRAWER_WIDTH = 250
 const DRAWER_WIDTH_COLLAPSED = 72
@@ -59,6 +61,18 @@ const menuGroups = [
     title: 'Ringkasan',
     items: [{ label: 'Dashboard', path: '/dashboard', active: true, icon: SpaceDashboardIcon }],
   },
+  {
+    title: 'Keamanan',
+    items: [
+      {
+        label: 'Kelola Akses',
+        path: '/access',
+        active: false,
+        icon: AdminPanelSettingsIcon,
+        roles: ['owner'],
+      },
+    ],
+  },
 ]
 
 export default function AppShell({ children }) {
@@ -72,6 +86,14 @@ export default function AppShell({ children }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const { selectedBranchId, setSelectedBranchId } = useBranch()
+  const { role } = useAuth()
+
+  const visibleGroups = menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.roles || item.roles.includes(role)),
+    }))
+    .filter((group) => group.items.length > 0)
 
   function toggleGroup(title) {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }))
@@ -147,7 +169,7 @@ export default function AppShell({ children }) {
       >
         <Toolbar sx={{ minHeight: isDesktop ? undefined : 128 }} />
         <List component="nav" sx={{ px: 1 }}>
-          {menuGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.title}>
               {!isCollapsed && (
                 <ListItemButton
