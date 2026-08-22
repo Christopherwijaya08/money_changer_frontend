@@ -1,13 +1,14 @@
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import { useAuth } from '../context/AuthContext'
 
 // ponytail: hardcoded until the real login API (Fase 5 backend) lands
 const MOCK_ADMIN = { email: 'admin@moneychanger.test', password: 'admin123' }
@@ -18,7 +19,8 @@ const schema = yup.object({
 })
 
 export default function LoginPage() {
-  const navigate = useNavigate()
+  const location = useLocation()
+  const { isAuthenticated, login } = useAuth()
   const {
     register,
     handleSubmit,
@@ -26,9 +28,15 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm({ defaultValues: { email: '', password: '' }, resolver: yupResolver(schema) })
 
+  // Single redirect point: covers both "just logged in" (login() flips this
+  // on the next render) and "already had a session, visited /login directly".
+  if (isAuthenticated) {
+    return <Navigate to={location.state?.from ?? '/'} replace />
+  }
+
   function onSubmit(data) {
     if (data.email === MOCK_ADMIN.email && data.password === MOCK_ADMIN.password) {
-      navigate('/')
+      login()
       return
     }
     setError('root', { message: 'Email atau kata sandi salah.' })
