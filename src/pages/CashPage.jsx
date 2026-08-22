@@ -16,7 +16,7 @@ import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 import Grid from '@mui/material/Grid'
-import { cashBalances, cashDeposits as initialCashDeposits, currencies } from '../mocks/data'
+import { cashBalances, cashDeposits as initialCashDeposits, currencies, transactions } from '../mocks/data'
 import { useBranch } from '../context/BranchContext'
 import { useThousandSeparator } from '../hooks/useThousandSeparator'
 
@@ -236,6 +236,141 @@ function CashDepositTab() {
   )
 }
 
+function ReconciliationRow({ row, onPhysicalChange }) {
+  const [display, handleChange] = useThousandSeparator(row.saldoFisik, (value) =>
+    onPhysicalChange(row.currencyCode, value)
+  )
+  const hasCounted = row.saldoFisik !== ''
+  const selisih = hasCounted ? row.saldoFisik - row.saldoAkhirSistem : null
+
+  return (
+    <TableRow hover>
+      <TableCell>{row.currencyCode}</TableCell>
+      <TableCell align="right">{formatBalance(row.saldoAwal)}</TableCell>
+      <TableCell align="right">{formatBalance(row.masuk)}</TableCell>
+      <TableCell align="right">{formatBalance(row.keluar)}</TableCell>
+      <TableCell align="right">{formatBalance(row.saldoAkhirSistem)}</TableCell>
+      <TableCell align="right">
+        <TextField
+          size="small"
+          inputMode="numeric"
+          placeholder={formatBalance(row.saldoAkhirSistem)}
+          value={display}
+          onChange={handleChange}
+          sx={{ width: 140 }}
+        />
+      </TableCell>
+      <TableCell
+        align="right"
+        sx={{ color: !hasCounted ? 'text.secondary' : selisih === 0 ? 'success.main' : 'error.main', fontWeight: 600 }}
+      >
+        {hasCounted ? formatBalance(selisih) : '-'}
+      </TableCell>
+    </TableRow>
+  )
+}
+
+function ReconciliationTab() {
+  const { selectedBranchId, branches } = useBranch()
+  const branchName = branches.find((b) => b.id === selectedBranchId)?.name
+  const [date, setDate] = useState('2026-08-16')
+  const [physicalCounts, setPhysicalCounts] = useState({})
+
+  function handlePhysicalChange(code, value) {
+    setPhysicalCounts((prev) => ({ ...prev, [code]: value === '' ? '' : Number(value) }))
+  }
+
+  const rows = cashBalances
+    .filter((b) => b.branchId === selectedBranchId)
+    .map((b) => {
+      const masuk =
+        transactions
+          .filter(
+            (t) =>
+              t.branchId === selectedBranchId &&
+              t.currencyCode === b.currencyCode &&
+              t.type === 'buy' &&
+              t.createdAt.startsWith(date)
+          )
+          .reduce((sum, t) => sum + t.amount, 0) +
+        initialCashDeposits
+          .filter(
+            (d) =>
+              d.branchId === selectedBranchId &&
+              d.currencyCode === b.currencyCode &&
+              d.createdAt.startsWith(date)
+          )
+          .reduce((sum, d) => sum + d.amount, 0)
+
+      const keluar = transactions
+        .filter(
+          (t) =>
+            t.branchId === selectedBranchId &&
+            t.currencyCode === b.currencyCode &&
+            t.type === 'sell' &&
+            t.createdAt.startsWith(date)
+        )
+        .reduce((sum, t) => sum + t.amount, 0)
+
+      const saldoAkhirSistem = b.balance
+      const saldoAwal = saldoAkhirSistem - masuk + keluar
+
+      return {
+        currencyCode: b.currencyCode,
+        saldoAwal,
+        masuk,
+        keluar,
+        saldoAkhirSistem,
+        saldoFisik: physicalCounts[b.currencyCode] ?? '',
+      }
+    })
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <Typography variant="body2" color="text.secondary">
+          Menampilkan rekonsiliasi untuk cabang: {branchName}
+        </Typography>
+        <TextField
+          size="small"
+          type="date"
+          label="Tanggal"
+          slotProps={{ inputLabel: { shrink: true } }}
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+      </div>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Mata Uang</TableCell>
+              <TableCell align="right">Saldo Awal</TableCell>
+              <TableCell align="right">Masuk</TableCell>
+              <TableCell align="right">Keluar</TableCell>
+              <TableCell align="right">Saldo Akhir (Sistem)</TableCell>
+              <TableCell align="right">Saldo Fisik</TableCell>
+              <TableCell align="right">Selisih</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row) => (
+              <ReconciliationRow key={row.currencyCode} row={row} onPhysicalChange={handlePhysicalChange} />
+            ))}
+            {rows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  Belum ada data untuk cabang ini.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </div>
+  )
+}
+
 export default function CashPage() {
   const [tab, setTab] = useState(0)
 
@@ -256,9 +391,7 @@ export default function CashPage() {
       <Paper className="p-6">
         {tab === 0 && <CashBalanceTab />}
         {tab === 1 && <CashDepositTab />}
-        {tab === 2 && (
-          <Typography color="text.secondary">{TABS[tab]} akan tersedia di sini.</Typography>
-        )}
+        {tab === 2 && <ReconciliationTab />}
       </Paper>
     </div>
   )
