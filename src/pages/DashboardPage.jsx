@@ -1,11 +1,18 @@
+import { useState } from 'react'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
 import Grid from '@mui/material/Grid'
 import Box from '@mui/material/Box'
+import TextField from '@mui/material/TextField'
+import MenuItem from '@mui/material/MenuItem'
 import PaidIcon from '@mui/icons-material/Paid'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import { transactions } from '../mocks/data'
 import { useBranch } from '../context/BranchContext'
+
+function getLatestDate() {
+  return transactions.reduce((max, t) => (t.createdAt.slice(0, 10) > max ? t.createdAt.slice(0, 10) : max), '')
+}
 
 function SectionPlaceholder({ title, minHeight }) {
   return (
@@ -54,11 +61,7 @@ function StatCard({ icon, label, value }) {
 function SummaryCards() {
   const { selectedBranchId, branches } = useBranch()
   const branchName = branches.find((b) => b.id === selectedBranchId)?.name
-
-  const latestDate = transactions.reduce(
-    (max, t) => (t.createdAt.slice(0, 10) > max ? t.createdAt.slice(0, 10) : max),
-    ''
-  )
+  const latestDate = getLatestDate()
 
   const todayTransactions = transactions.filter(
     (t) => t.branchId === selectedBranchId && t.createdAt.startsWith(latestDate)
@@ -91,6 +94,82 @@ function SummaryCards() {
   )
 }
 
+const PERIOD_OPTIONS = [
+  { value: 7, label: '7 Hari Terakhir' },
+  { value: 14, label: '14 Hari Terakhir' },
+  { value: 30, label: '30 Hari Terakhir' },
+]
+
+function TrendChart() {
+  const { selectedBranchId } = useBranch()
+  const [period, setPeriod] = useState(7)
+
+  const latestDate = getLatestDate()
+  const days = Array.from({ length: period }, (_, i) => {
+    const d = new Date(latestDate)
+    d.setDate(d.getDate() - (period - 1 - i))
+    return d.toISOString().slice(0, 10)
+  })
+
+  const data = days.map((date) => ({
+    date,
+    total: transactions
+      .filter((t) => t.branchId === selectedBranchId && t.createdAt.startsWith(date))
+      .reduce((sum, t) => sum + t.totalAmount, 0),
+  }))
+
+  const max = Math.max(...data.map((d) => d.total), 1)
+
+  return (
+    <Paper className="p-6">
+      <Box className="flex items-center justify-between flex-wrap gap-2 mb-6">
+        <Typography variant="subtitle1" className="font-medium">
+          Grafik Tren Transaksi (Omzet Harian)
+        </Typography>
+        <TextField
+          select
+          size="small"
+          value={period}
+          onChange={(e) => setPeriod(Number(e.target.value))}
+          sx={{ minWidth: 160 }}
+        >
+          {PERIOD_OPTIONS.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Box>
+      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5, height: 180 }}>
+        {data.map((d) => (
+          <Box
+            key={d.date}
+            sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, height: '100%' }}
+          >
+            <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%' }}>
+              <Box
+                title={`${d.date}: Rp ${d.total.toLocaleString('id-ID')}`}
+                data-testid="trend-bar"
+                sx={{
+                  width: '100%',
+                  height: `${Math.max((d.total / max) * 100, 2)}%`,
+                  bgcolor: 'primary.main',
+                  borderRadius: '4px 4px 0 0',
+                }}
+              />
+            </Box>
+            {period <= 7 && (
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9 }}>
+                {d.date.slice(5)}
+              </Typography>
+            )}
+          </Box>
+        ))}
+      </Box>
+    </Paper>
+  )
+}
+
 export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
@@ -103,7 +182,7 @@ export default function DashboardPage() {
           <SummaryCards />
         </Grid>
         <Grid size={12}>
-          <SectionPlaceholder title="Grafik Tren Transaksi" minHeight={260} />
+          <TrendChart />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <SectionPlaceholder title="Transaksi Perlu Review" minHeight={260} />
