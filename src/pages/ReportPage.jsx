@@ -9,10 +9,11 @@ import TableBody from '@mui/material/TableBody'
 import TableRow from '@mui/material/TableRow'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
+import TableSortLabel from '@mui/material/TableSortLabel'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
-import { currencies, transactions } from '../mocks/data'
+import { currencies, employees, transactions } from '../mocks/data'
 import { useBranch } from '../context/BranchContext'
 
 const TABS = ['Laporan Laba-Rugi', 'Laporan per Karyawan']
@@ -149,6 +150,99 @@ function ProfitLossTab() {
   )
 }
 
+const EMPLOYEE_COLUMNS = [
+  { key: 'name', label: 'Nama Karyawan' },
+  { key: 'jumlahTransaksi', label: 'Jumlah Transaksi', align: 'right' },
+  { key: 'totalOmzet', label: 'Total Omzet', align: 'right' },
+  { key: 'totalMargin', label: 'Total Laba/Rugi', align: 'right' },
+]
+
+function EmployeeReportTab() {
+  const { selectedBranchId, branches } = useBranch()
+  const branchName = branches.find((b) => b.id === selectedBranchId)?.name
+  const [orderBy, setOrderBy] = useState('totalOmzet')
+  const [order, setOrder] = useState('desc')
+
+  const rows = employees
+    .filter((e) => e.branchId === selectedBranchId)
+    .map((e) => {
+      const employeeTransactions = transactions.filter(
+        (t) => t.branchId === selectedBranchId && t.employeeName === e.name
+      )
+      return {
+        id: e.id,
+        name: e.name,
+        jumlahTransaksi: employeeTransactions.length,
+        totalOmzet: employeeTransactions.reduce((sum, t) => sum + t.totalAmount, 0),
+        totalMargin: employeeTransactions.reduce((sum, t) => sum + computeMargin(t), 0),
+      }
+    })
+    .sort((a, b) => {
+      const dir = order === 'asc' ? 1 : -1
+      if (a[orderBy] < b[orderBy]) return -1 * dir
+      if (a[orderBy] > b[orderBy]) return 1 * dir
+      return 0
+    })
+
+  function handleSort(column) {
+    if (orderBy === column) {
+      setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setOrderBy(column)
+      setOrder('desc')
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Typography variant="body2" color="text.secondary">
+        Menampilkan laporan per karyawan untuk cabang: {branchName}
+      </Typography>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              {EMPLOYEE_COLUMNS.map((col) => (
+                <TableCell key={col.key} align={col.align}>
+                  <TableSortLabel
+                    active={orderBy === col.key}
+                    direction={orderBy === col.key ? order : 'asc'}
+                    onClick={() => handleSort(col.key)}
+                  >
+                    {col.label}
+                  </TableSortLabel>
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.id} hover>
+                <TableCell>{r.name}</TableCell>
+                <TableCell align="right">{r.jumlahTransaksi}</TableCell>
+                <TableCell align="right">{formatNumber(r.totalOmzet)}</TableCell>
+                <TableCell
+                  align="right"
+                  sx={{ color: r.totalMargin >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}
+                >
+                  {formatNumber(r.totalMargin)}
+                </TableCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} align="center">
+                  Belum ada karyawan untuk cabang ini.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </div>
+  )
+}
+
 export default function ReportPage() {
   const [tab, setTab] = useState(0)
 
@@ -168,9 +262,7 @@ export default function ReportPage() {
 
       <Paper className="p-6">
         {tab === 0 && <ProfitLossTab />}
-        {tab === 1 && (
-          <Typography color="text.secondary">{TABS[tab]} akan tersedia di sini.</Typography>
-        )}
+        {tab === 1 && <EmployeeReportTab />}
       </Paper>
     </div>
   )
