@@ -4,7 +4,6 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import Button from '@mui/material/Button'
-import Avatar from '@mui/material/Avatar'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
 import Table from '@mui/material/Table'
@@ -18,6 +17,7 @@ import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Chip from '@mui/material/Chip'
 import { transactions } from '../mocks/data'
+import KtpPhotoAvatar from './KtpPhotoAvatar'
 
 function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
@@ -73,9 +73,7 @@ export default function CustomerDetailDialog({ open, onClose, customer }) {
       <DialogTitle>Detail Nasabah</DialogTitle>
       <DialogContent>
         <div className="flex gap-4 mb-4">
-          <Avatar variant="rounded" src={customer.idPhotoUrl} sx={{ width: 120, height: 90 }}>
-            KTP
-          </Avatar>
+          <KtpPhotoAvatar src={customer.idPhotoUrl} sx={{ width: 120, height: 90 }} />
           <div className="flex flex-col gap-0.5">
             <Typography variant="h6">{customer.name}</Typography>
             <Typography variant="body2" color="text.secondary">

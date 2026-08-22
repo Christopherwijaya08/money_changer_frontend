@@ -11,7 +11,6 @@ import TableBody from '@mui/material/TableBody'
 import TableRow from '@mui/material/TableRow'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
-import Avatar from '@mui/material/Avatar'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import EditIcon from '@mui/icons-material/Edit'
 import VisibilityIcon from '@mui/icons-material/Visibility'
@@ -19,6 +18,7 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import { customers as initialCustomers } from '../mocks/data'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerDetailDialog from '../components/CustomerDetailDialog'
+import KtpPhotoAvatar from '../components/KtpPhotoAvatar'
 
 export default function CustomerPage() {
   const [customerList, setCustomerList] = useState(initialCustomers)
@@ -97,9 +97,7 @@ export default function CustomerPage() {
               {filteredCustomers.map((c) => (
                 <TableRow key={c.id} hover>
                   <TableCell>
-                    <Avatar variant="rounded" src={c.idPhotoUrl} sx={{ width: 48, height: 36 }}>
-                      KTP
-                    </Avatar>
+                    <KtpPhotoAvatar src={c.idPhotoUrl} sx={{ width: 48, height: 36 }} />
                   </TableCell>
                   <TableCell>{c.name}</TableCell>
                   <TableCell>{c.identityNumber}</TableCell>
