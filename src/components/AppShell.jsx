@@ -51,8 +51,8 @@ const menuGroups = [
   {
     title: 'Keuangan',
     items: [
-      { label: 'Kas', path: '/cash', active: false, icon: AccountBalanceWalletIcon },
-      { label: 'Laporan', path: '/reports', active: false, icon: AssessmentIcon },
+      { label: 'Kas', path: '/cash', active: true, icon: AccountBalanceWalletIcon },
+      { label: 'Laporan', path: '/reports', active: true, icon: AssessmentIcon },
     ],
   },
   {

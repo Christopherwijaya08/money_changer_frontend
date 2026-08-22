@@ -7,6 +7,8 @@ import CustomerPage from './pages/CustomerPage'
 import ThresholdSettingsPage from './pages/ThresholdSettingsPage'
 import EmployeePage from './pages/EmployeePage'
 import BranchPage from './pages/BranchPage'
+import CashPage from './pages/CashPage'
+import ReportPage from './pages/ReportPage'
 import { BranchProvider } from './context/BranchContext'
 
 function App() {
@@ -21,6 +23,8 @@ function App() {
           <Route path="/customers/threshold" element={<ThresholdSettingsPage />} />
           <Route path="/employees" element={<EmployeePage />} />
           <Route path="/branches" element={<BranchPage />} />
+          <Route path="/cash" element={<CashPage />} />
+          <Route path="/reports" element={<ReportPage />} />
         </Routes>
       </AppShell>
     </BranchProvider>
