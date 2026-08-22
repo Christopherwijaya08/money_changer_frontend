@@ -1,10 +1,16 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
 import Grid from '@mui/material/Grid'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
+import Button from '@mui/material/Button'
+import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
+import ListItemText from '@mui/material/ListItemText'
+import Chip from '@mui/material/Chip'
 import PaidIcon from '@mui/icons-material/Paid'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import { transactions } from '../mocks/data'
@@ -170,6 +176,46 @@ function TrendChart() {
   )
 }
 
+function ReviewList() {
+  const { selectedBranchId } = useBranch()
+
+  const needsReview = transactions
+    .filter((t) => t.branchId === selectedBranchId && t.requiresReview)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+
+  return (
+    <Paper className="p-6 h-full flex flex-col">
+      <Box className="flex items-center justify-between mb-2">
+        <Typography variant="subtitle1" className="font-medium">
+          Transaksi Perlu Review
+        </Typography>
+        {needsReview.length > 0 && (
+          <Chip label={needsReview.length} color="warning" size="small" />
+        )}
+      </Box>
+      {needsReview.length === 0 ? (
+        <Typography color="text.secondary" variant="body2">
+          Tidak ada transaksi yang perlu direview.
+        </Typography>
+      ) : (
+        <List dense disablePadding>
+          {needsReview.map((t) => (
+            <ListItem key={t.id} disableGutters divider>
+              <ListItemText
+                primary={`${t.transactionNumber} — ${t.customerName}`}
+                secondary={`${t.currencyCode} ${t.amount.toLocaleString('id-ID')} · Rp ${t.totalAmount.toLocaleString('id-ID')} · ${t.createdAt}`}
+              />
+            </ListItem>
+          ))}
+        </List>
+      )}
+      <Button component={Link} to="/" size="small" className="self-start mt-2">
+        Lihat Semua Transaksi
+      </Button>
+    </Paper>
+  )
+}
+
 export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
@@ -185,7 +231,7 @@ export default function DashboardPage() {
           <TrendChart />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
-          <SectionPlaceholder title="Transaksi Perlu Review" minHeight={260} />
+          <ReviewList />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <SectionPlaceholder title="Transaksi Terbaru" minHeight={260} />
