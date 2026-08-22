@@ -9,28 +9,17 @@ import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
+import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import Chip from '@mui/material/Chip'
 import PaidIcon from '@mui/icons-material/Paid'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import { transactions } from '../mocks/data'
 import { useBranch } from '../context/BranchContext'
+import ReceiptDialog from '../components/ReceiptDialog'
 
 function getLatestDate() {
   return transactions.reduce((max, t) => (t.createdAt.slice(0, 10) > max ? t.createdAt.slice(0, 10) : max), '')
-}
-
-function SectionPlaceholder({ title, minHeight }) {
-  return (
-    <Paper className="p-6" sx={{ minHeight }}>
-      <Typography variant="subtitle1" className="font-medium">
-        {title}
-      </Typography>
-      <Typography color="text.secondary" variant="body2">
-        Akan tersedia di sini.
-      </Typography>
-    </Paper>
-  )
 }
 
 function StatCard({ icon, label, value }) {
@@ -216,6 +205,45 @@ function ReviewList() {
   )
 }
 
+const RECENT_LIMIT = 5
+
+function RecentTransactionsList() {
+  const { selectedBranchId } = useBranch()
+  const [selected, setSelected] = useState(null)
+
+  const recent = transactions
+    .filter((t) => t.branchId === selectedBranchId)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, RECENT_LIMIT)
+
+  return (
+    <Paper className="p-6 h-full flex flex-col">
+      <Typography variant="subtitle1" className="font-medium mb-2">
+        Transaksi Terbaru
+      </Typography>
+      {recent.length === 0 ? (
+        <Typography color="text.secondary" variant="body2">
+          Belum ada transaksi untuk cabang ini.
+        </Typography>
+      ) : (
+        <List dense disablePadding>
+          {recent.map((t) => (
+            <ListItem key={t.id} disableGutters divider disablePadding>
+              <ListItemButton onClick={() => setSelected(t)}>
+                <ListItemText
+                  primary={`${t.transactionNumber} — ${t.customerName}`}
+                  secondary={`${t.currencyCode} ${t.amount.toLocaleString('id-ID')} · Rp ${t.totalAmount.toLocaleString('id-ID')} · ${t.createdAt}`}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      )}
+      <ReceiptDialog open={!!selected} onClose={() => setSelected(null)} transaction={selected} />
+    </Paper>
+  )
+}
+
 export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
@@ -234,7 +262,7 @@ export default function DashboardPage() {
           <ReviewList />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
-          <SectionPlaceholder title="Transaksi Terbaru" minHeight={260} />
+          <RecentTransactionsList />
         </Grid>
       </Grid>
     </div>
