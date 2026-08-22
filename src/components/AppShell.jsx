@@ -7,9 +7,8 @@ import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import Collapse from '@mui/material/Collapse'
-import Divider from '@mui/material/Divider'
 import Box from '@mui/material/Box'
-import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import { alpha } from '@mui/material/styles'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BranchSelector from './BranchSelector'
@@ -59,14 +58,22 @@ export default function AppShell({ children }) {
 
   return (
     <Box sx={{ display: 'flex' }}>
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+      <AppBar
+        position="fixed"
+        color="transparent"
+        sx={{
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          px: 4,
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
         <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" noWrap component="div" color="text.primary">
             Money Changer
           </Typography>
-          <Box sx={{ '& .MuiInputBase-root': { color: 'inherit' }, '& .MuiInputLabel-root': { color: 'inherit' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.5)' } }}>
-            <BranchSelector value={selectedBranchId} onChange={setSelectedBranchId} />
-          </Box>
+          <BranchSelector value={selectedBranchId} onChange={setSelectedBranchId} />
         </Toolbar>
       </AppBar>
       <Drawer
@@ -78,40 +85,86 @@ export default function AppShell({ children }) {
         }}
       >
         <Toolbar />
-        <List component="nav">
-          {menuGroups.map((group, index) => (
+        <List component="nav" sx={{ px: 1 }}>
+          {menuGroups.map((group) => (
             <div key={group.title}>
-              {index > 0 && <Divider />}
-              <ListItemButton onClick={() => toggleGroup(group.title)}>
+              <ListItemButton
+                onClick={() => toggleGroup(group.title)}
+                sx={{
+                  borderRadius: 1,
+                  mt: 1.5,
+                  '&:hover .group-chevron': { opacity: 1 },
+                }}
+              >
+                <ExpandMoreIcon
+                  fontSize="small"
+                  className="group-chevron"
+                  sx={{
+                    opacity: 0,
+                    mr: 0.5,
+                    transition: (theme) => theme.transitions.create('all'),
+                    transform: openGroups[group.title] ? 'rotate(0deg)' : 'rotate(-90deg)',
+                    color: 'text.secondary',
+                  }}
+                />
                 <ListItemText
                   primary={group.title}
-                  slotProps={{ primary: { sx: { fontSize: '1rem', fontWeight: 700 } } }}
+                  slotProps={{
+                    primary: {
+                      sx: {
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        color: 'text.secondary',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      },
+                    },
+                  }}
                 />
-                {openGroups[group.title] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               </ListItemButton>
               <Collapse in={openGroups[group.title]} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
-                  {group.items.map((item) => (
-                    <ListItemButton
-                      key={item.label}
-                      sx={{ pl: 4 }}
-                      selected={location.pathname === item.path}
-                      disabled={!item.active}
-                      onClick={() => navigate(item.path)}
-                    >
-                      <ListItemText
-                        primary={item.label}
-                        slotProps={{ primary: { sx: { fontSize: '0.875rem' } } }}
-                      />
-                    </ListItemButton>
-                  ))}
+                  {group.items.map((item) => {
+                    const isSelected = location.pathname === item.path
+                    return (
+                      <ListItemButton
+                        key={item.label}
+                        sx={{
+                          pl: 4,
+                          mx: 0.5,
+                          my: 0.25,
+                          borderRadius: 1,
+                          '&.Mui-selected': {
+                            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                            '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12) },
+                          },
+                        }}
+                        selected={isSelected}
+                        disabled={!item.active}
+                        onClick={() => navigate(item.path)}
+                      >
+                        <ListItemText
+                          primary={item.label}
+                          slotProps={{
+                            primary: {
+                              sx: {
+                                fontSize: '0.875rem',
+                                fontWeight: isSelected ? 700 : 500,
+                                color: isSelected ? 'primary.main' : 'text.primary',
+                              },
+                            },
+                          }}
+                        />
+                      </ListItemButton>
+                    )
+                  })}
                 </List>
               </Collapse>
             </div>
           ))}
         </List>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, minWidth: 0 }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 8, minWidth: 0, bgcolor: 'background.default', minHeight: '100vh' }}>
         <Toolbar />
         {children}
       </Box>

@@ -184,7 +184,7 @@ export default function TransactionPage() {
           Transaksi Baru
         </Typography>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <Grid container spacing={2}>
+          <Grid container spacing={8}>
             <Grid size={{ xs: 12, sm: 4 }}>
               <Controller
                 name="type"
