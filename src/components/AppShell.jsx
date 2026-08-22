@@ -22,6 +22,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
+import LockResetIcon from '@mui/icons-material/LockReset'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
@@ -91,6 +92,11 @@ function UserMenu() {
     navigate('/login', { replace: true })
   }
 
+  function handleChangePassword() {
+    setAnchorEl(null)
+    navigate('/change-password')
+  }
+
   return (
     <>
       <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
@@ -101,6 +107,12 @@ function UserMenu() {
       <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
         <MenuItem disabled>{role === 'owner' ? 'Owner' : 'Admin'}</MenuItem>
         <Divider />
+        <MenuItem onClick={handleChangePassword}>
+          <ListItemIcon>
+            <LockResetIcon fontSize="small" />
+          </ListItemIcon>
+          Ganti Kata Sandi
+        </MenuItem>
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <LogoutIcon fontSize="small" />
