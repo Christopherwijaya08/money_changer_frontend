@@ -13,10 +13,15 @@ import Collapse from '@mui/material/Collapse'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
+import Avatar from '@mui/material/Avatar'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import Divider from '@mui/material/Divider'
 import { alpha } from '@mui/material/styles'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import MenuIcon from '@mui/icons-material/Menu'
+import LogoutIcon from '@mui/icons-material/Logout'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
@@ -74,6 +79,38 @@ const menuGroups = [
     ],
   },
 ]
+
+function UserMenu() {
+  const { role, logout } = useAuth()
+  const navigate = useNavigate()
+  const [anchorEl, setAnchorEl] = useState(null)
+
+  function handleLogout() {
+    setAnchorEl(null)
+    logout()
+    navigate('/login', { replace: true })
+  }
+
+  return (
+    <>
+      <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
+        <Avatar sx={{ width: 32, height: 32, fontSize: '0.875rem' }}>
+          {role ? role[0].toUpperCase() : '?'}
+        </Avatar>
+      </IconButton>
+      <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
+        <MenuItem disabled>{role === 'owner' ? 'Owner' : 'Admin'}</MenuItem>
+        <Divider />
+        <MenuItem onClick={handleLogout}>
+          <ListItemIcon>
+            <LogoutIcon fontSize="small" />
+          </ListItemIcon>
+          Keluar
+        </MenuItem>
+      </Menu>
+    </>
+  )
+}
 
 export default function AppShell({ children }) {
   const location = useLocation()
@@ -141,8 +178,11 @@ export default function AppShell({ children }) {
               Money Changer
             </Typography>
           </Box>
-          <Box sx={{ width: isDesktop ? 'auto' : '100%' }}>
-            <BranchSelector value={selectedBranchId} onChange={setSelectedBranchId} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: isDesktop ? 'auto' : '100%' }}>
+            <Box sx={{ flex: isDesktop ? 'none' : 1 }}>
+              <BranchSelector value={selectedBranchId} onChange={setSelectedBranchId} />
+            </Box>
+            <UserMenu />
           </Box>
         </Toolbar>
       </AppBar>
