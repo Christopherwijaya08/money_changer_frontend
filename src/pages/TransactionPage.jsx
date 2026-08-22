@@ -250,8 +250,8 @@ export default function TransactionPage() {
                       onChange={handleChange}
                       slotProps={{
                         input: {
-                          startAdornment: selectedCurrency && (
-                            <InputAdornment position="start">{selectedCurrency.code}</InputAdornment>
+                          endAdornment: selectedCurrency && (
+                            <InputAdornment position="end">{selectedCurrency.code}</InputAdornment>
                           ),
                         },
                       }}
