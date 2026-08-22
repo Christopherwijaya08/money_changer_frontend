@@ -130,7 +130,7 @@ export default function AppShell({ children }) {
                       <ListItemButton
                         key={item.label}
                         sx={{
-                          pl: 4,
+                          pl: '32px',
                           mx: 0.5,
                           my: 0.25,
                           borderRadius: 1,
