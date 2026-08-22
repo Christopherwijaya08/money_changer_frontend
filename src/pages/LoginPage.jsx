@@ -1,0 +1,83 @@
+import { useForm } from 'react-hook-form'
+import { yupResolver } from '@hookform/resolvers/yup'
+import * as yup from 'yup'
+import { useNavigate } from 'react-router-dom'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
+import TextField from '@mui/material/TextField'
+import Button from '@mui/material/Button'
+import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
+
+// ponytail: hardcoded until the real login API (Fase 5 backend) lands
+const MOCK_ADMIN = { email: 'admin@moneychanger.test', password: 'admin123' }
+
+const schema = yup.object({
+  email: yup.string().email('Format email tidak valid').required('Email wajib diisi'),
+  password: yup.string().required('Kata sandi wajib diisi').min(6, 'Kata sandi minimal 6 karakter'),
+})
+
+export default function LoginPage() {
+  const navigate = useNavigate()
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm({ defaultValues: { email: '', password: '' }, resolver: yupResolver(schema) })
+
+  function onSubmit(data) {
+    if (data.email === MOCK_ADMIN.email && data.password === MOCK_ADMIN.password) {
+      navigate('/')
+      return
+    }
+    setError('root', { message: 'Email atau kata sandi salah.' })
+  }
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: 'background.default',
+        p: 2,
+      }}
+    >
+      <Paper className="p-8 w-full" sx={{ maxWidth: 400 }}>
+        <Typography variant="h5" component="h1" className="font-medium mb-1">
+          Money Changer
+        </Typography>
+        <Typography color="text.secondary" variant="body2" className="mb-6">
+          Masuk untuk mengelola transaksi dan data toko.
+        </Typography>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          {errors.root && <Alert severity="error">{errors.root.message}</Alert>}
+          <TextField
+            fullWidth
+            label="Email"
+            type="email"
+            autoComplete="username"
+            error={!!errors.email}
+            helperText={errors.email?.message}
+            {...register('email')}
+          />
+          <TextField
+            fullWidth
+            label="Kata Sandi"
+            type="password"
+            autoComplete="current-password"
+            error={!!errors.password}
+            helperText={errors.password?.message}
+            {...register('password')}
+          />
+          <Button type="submit" variant="contained" size="large">
+            Masuk
+          </Button>
+        </form>
+      </Paper>
+    </Box>
+  )
+}

@@ -1,5 +1,6 @@
-import { Route, Routes } from 'react-router-dom'
+import { Outlet, Route, Routes } from 'react-router-dom'
 import AppShell from './components/AppShell'
+import LoginPage from './pages/LoginPage'
 import TransactionPage from './pages/TransactionPage'
 import CurrencyPage from './pages/CurrencyPage'
 import ExchangeRatePage from './pages/ExchangeRatePage'
@@ -12,11 +13,20 @@ import ReportPage from './pages/ReportPage'
 import DashboardPage from './pages/DashboardPage'
 import { BranchProvider } from './context/BranchContext'
 
+function AppLayout() {
+  return (
+    <AppShell>
+      <Outlet />
+    </AppShell>
+  )
+}
+
 function App() {
   return (
     <BranchProvider>
-      <AppShell>
-        <Routes>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<AppLayout />}>
           <Route path="/" element={<TransactionPage />} />
           <Route path="/currencies" element={<CurrencyPage />} />
           <Route path="/exchange-rates" element={<ExchangeRatePage />} />
@@ -27,8 +37,8 @@ function App() {
           <Route path="/cash" element={<CashPage />} />
           <Route path="/reports" element={<ReportPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-        </Routes>
-      </AppShell>
+        </Route>
+      </Routes>
     </BranchProvider>
   )
 }
