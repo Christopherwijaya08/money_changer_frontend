@@ -224,11 +224,13 @@ export default function TransactionPage() {
                       handleCurrencyChange(id)
                     }}
                   >
-                    {currencies.map((c) => (
-                      <MenuItem key={c.id} value={c.id}>
-                        {c.code}
-                      </MenuItem>
-                    ))}
+                    {currencies
+                      .filter((c) => c.isActive)
+                      .map((c) => (
+                        <MenuItem key={c.id} value={c.id}>
+                          {c.code}
+                        </MenuItem>
+                      ))}
                   </TextField>
                 )}
               />
