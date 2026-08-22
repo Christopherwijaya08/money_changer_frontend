@@ -166,3 +166,33 @@ export const cashBalances = [
   { branchId: 2, currencyCode: 'SGD', currencyName: 'Dolar Singapura', balance: 9000 },
   { branchId: 2, currencyCode: 'AUD', currencyName: 'Dolar Australia', balance: 6000 },
 ]
+
+export const cashDeposits = [
+  {
+    id: 1,
+    currencyCode: 'USD',
+    amount: 20000,
+    rate: 15750,
+    note: 'Modal awal dari Owner',
+    createdAt: '2026-08-10 09:00',
+    branchId: 1,
+  },
+  {
+    id: 2,
+    currencyCode: 'SGD',
+    amount: 15000,
+    rate: 11600,
+    note: 'Beli stok dari supplier valas',
+    createdAt: '2026-08-12 14:30',
+    branchId: 1,
+  },
+  {
+    id: 3,
+    currencyCode: 'USD',
+    amount: 10000,
+    rate: 15700,
+    note: 'Modal awal dari Owner',
+    createdAt: '2026-08-11 10:15',
+    branchId: 2,
+  },
+]
