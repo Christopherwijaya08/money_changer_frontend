@@ -13,8 +13,11 @@ import TableSortLabel from '@mui/material/TableSortLabel'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import { currencies, employees, transactions } from '../mocks/data'
 import { useBranch } from '../context/BranchContext'
+import { downloadCsv } from '../utils/exportCsv'
 
 const TABS = ['Laporan Laba-Rugi', 'Laporan per Karyawan']
 
@@ -24,6 +27,19 @@ function formatNumber(value) {
 
 function computeMargin(t) {
   return t.type === 'buy' ? (t.rateDefault - t.rateActual) * t.amount : (t.rateActual - t.rateDefault) * t.amount
+}
+
+function ExportButtons({ onExportExcel }) {
+  return (
+    <div className="flex gap-2">
+      <Button size="small" startIcon={<FileDownloadIcon />} onClick={onExportExcel}>
+        Export Excel
+      </Button>
+      <Button size="small" startIcon={<PictureAsPdfIcon />} onClick={() => window.print()}>
+        Export PDF
+      </Button>
+    </div>
+  )
 }
 
 function ProfitLossTab() {
@@ -51,48 +67,68 @@ function ProfitLossTab() {
     setCurrencyCode('')
   }
 
+  function exportExcel() {
+    downloadCsv(
+      'laporan-laba-rugi.csv',
+      ['No. Transaksi', 'Tanggal', 'Tipe', 'Mata Uang', 'Nominal', 'Kurs Default', 'Kurs Aktual', 'Laba/Rugi'],
+      filtered.map((t) => [
+        t.transactionNumber,
+        t.createdAt,
+        t.type === 'buy' ? 'Beli' : 'Jual',
+        t.currencyCode,
+        t.amount,
+        t.rateDefault,
+        t.rateActual,
+        t.margin,
+      ])
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <Typography variant="body2" color="text.secondary">
         Menampilkan laporan laba-rugi untuk cabang: {branchName}
       </Typography>
 
-      <div className="flex flex-wrap gap-4 items-center">
-        <TextField
-          size="small"
-          type="date"
-          label="Dari Tanggal"
-          slotProps={{ inputLabel: { shrink: true } }}
-          value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
-        />
-        <TextField
-          size="small"
-          type="date"
-          label="Sampai Tanggal"
-          slotProps={{ inputLabel: { shrink: true } }}
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-        />
-        <TextField
-          size="small"
-          select
-          label="Mata Uang"
-          value={currencyCode}
-          onChange={(e) => setCurrencyCode(e.target.value)}
-          sx={{ minWidth: 140 }}
-        >
-          <MenuItem value="">Semua</MenuItem>
-          {currencies.map((c) => (
-            <MenuItem key={c.id} value={c.code}>
-              {c.code}
-            </MenuItem>
-          ))}
-        </TextField>
-        <Button onClick={resetFilters}>Reset Filter</Button>
+      <div className="flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex flex-wrap gap-4 items-center">
+          <TextField
+            size="small"
+            type="date"
+            label="Dari Tanggal"
+            slotProps={{ inputLabel: { shrink: true } }}
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+          <TextField
+            size="small"
+            type="date"
+            label="Sampai Tanggal"
+            slotProps={{ inputLabel: { shrink: true } }}
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+          <TextField
+            size="small"
+            select
+            label="Mata Uang"
+            value={currencyCode}
+            onChange={(e) => setCurrencyCode(e.target.value)}
+            sx={{ minWidth: 140 }}
+          >
+            <MenuItem value="">Semua</MenuItem>
+            {currencies.map((c) => (
+              <MenuItem key={c.id} value={c.code}>
+                {c.code}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Button onClick={resetFilters}>Reset Filter</Button>
+        </div>
+        <ExportButtons onExportExcel={exportExcel} />
       </div>
 
-      <TableContainer>
+      <TableContainer className="print-area">
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -193,12 +229,23 @@ function EmployeeReportTab() {
     }
   }
 
+  function exportExcel() {
+    downloadCsv(
+      'laporan-per-karyawan.csv',
+      ['Nama Karyawan', 'Jumlah Transaksi', 'Total Omzet', 'Total Laba/Rugi'],
+      rows.map((r) => [r.name, r.jumlahTransaksi, r.totalOmzet, r.totalMargin])
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <Typography variant="body2" color="text.secondary">
-        Menampilkan laporan per karyawan untuk cabang: {branchName}
-      </Typography>
-      <TableContainer>
+      <div className="flex flex-wrap gap-4 items-center justify-between">
+        <Typography variant="body2" color="text.secondary">
+          Menampilkan laporan per karyawan untuk cabang: {branchName}
+        </Typography>
+        <ExportButtons onExportExcel={exportExcel} />
+      </div>
+      <TableContainer className="print-area">
         <Table size="small">
           <TableHead>
             <TableRow>
