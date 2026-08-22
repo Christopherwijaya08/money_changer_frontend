@@ -11,6 +11,7 @@ import BranchPage from './pages/BranchPage'
 import CashPage from './pages/CashPage'
 import ReportPage from './pages/ReportPage'
 import DashboardPage from './pages/DashboardPage'
+import AccessPage from './pages/AccessPage'
 import { BranchProvider } from './context/BranchContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
@@ -46,6 +47,7 @@ function App() {
             <Route path="/cash" element={<CashPage />} />
             <Route path="/reports" element={<ReportPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/access" element={<AccessPage />} />
           </Route>
         </Routes>
       </BranchProvider>

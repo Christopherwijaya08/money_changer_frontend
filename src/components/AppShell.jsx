@@ -72,7 +72,7 @@ const menuGroups = [
       {
         label: 'Kelola Akses',
         path: '/access',
-        active: false,
+        active: true,
         icon: AdminPanelSettingsIcon,
         roles: ['owner'],
       },

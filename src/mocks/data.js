@@ -202,3 +202,8 @@ export const cashDeposits = [
     branchId: 2,
   },
 ]
+
+export const adminUsers = [
+  { id: 1, name: 'Budi Hartono', email: 'admin@moneychanger.test', role: 'admin', isActive: true },
+  { id: 2, name: 'Siti Rahayu', email: 'owner@moneychanger.test', role: 'owner', isActive: true },
+]
