@@ -154,3 +154,15 @@ export const transactions = [
     branchId: 2,
   },
 ]
+
+export const cashBalances = [
+  { branchId: 1, currencyCode: 'IDR', currencyName: 'Rupiah', balance: 250000000 },
+  { branchId: 1, currencyCode: 'USD', currencyName: 'Dolar Amerika Serikat', balance: 45000 },
+  { branchId: 1, currencyCode: 'SGD', currencyName: 'Dolar Singapura', balance: 30000 },
+  { branchId: 1, currencyCode: 'EUR', currencyName: 'Euro', balance: 12000 },
+  { branchId: 1, currencyCode: 'JPY', currencyName: 'Yen Jepang', balance: 1500000 },
+  { branchId: 2, currencyCode: 'IDR', currencyName: 'Rupiah', balance: 120000000 },
+  { branchId: 2, currencyCode: 'USD', currencyName: 'Dolar Amerika Serikat', balance: 18000 },
+  { branchId: 2, currencyCode: 'SGD', currencyName: 'Dolar Singapura', balance: 9000 },
+  { branchId: 2, currencyCode: 'AUD', currencyName: 'Dolar Australia', balance: 6000 },
+]
