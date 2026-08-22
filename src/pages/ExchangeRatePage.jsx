@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import Paper from '@mui/material/Paper'
@@ -20,6 +20,7 @@ import Grid from '@mui/material/Grid'
 import EditIcon from '@mui/icons-material/Edit'
 import MenuItem from '@mui/material/MenuItem'
 import { currencies as initialCurrencies, exchangeRateHistory as initialHistory } from '../mocks/data'
+import { useThousandSeparator } from '../hooks/useThousandSeparator'
 
 const CURRENT_USER = 'Admin'
 
@@ -46,7 +47,7 @@ export default function ExchangeRatePage() {
   const [filterCurrency, setFilterCurrency] = useState('')
 
   const {
-    register,
+    control,
     handleSubmit,
     watch,
     reset,
@@ -201,23 +202,43 @@ export default function ExchangeRatePage() {
           <DialogContent>
             <Grid container spacing={2} className="mt-1">
               <Grid size={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Kurs Beli"
-                  error={!!errors.rateBuy}
-                  helperText={errors.rateBuy?.message}
-                  {...register('rateBuy')}
+                <Controller
+                  name="rateBuy"
+                  control={control}
+                  render={({ field }) => {
+                    const [display, handleChange] = useThousandSeparator(field.value, field.onChange)
+                    return (
+                      <TextField
+                        fullWidth
+                        inputMode="numeric"
+                        label="Kurs Beli"
+                        error={!!errors.rateBuy}
+                        helperText={errors.rateBuy?.message}
+                        value={display}
+                        onChange={handleChange}
+                      />
+                    )
+                  }}
                 />
               </Grid>
               <Grid size={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Kurs Jual"
-                  error={!!errors.rateSell}
-                  helperText={errors.rateSell?.message}
-                  {...register('rateSell')}
+                <Controller
+                  name="rateSell"
+                  control={control}
+                  render={({ field }) => {
+                    const [display, handleChange] = useThousandSeparator(field.value, field.onChange)
+                    return (
+                      <TextField
+                        fullWidth
+                        inputMode="numeric"
+                        label="Kurs Jual"
+                        error={!!errors.rateSell}
+                        helperText={errors.rateSell?.message}
+                        value={display}
+                        onChange={handleChange}
+                      />
+                    )
+                  }}
                 />
               </Grid>
               <Grid size={12}>

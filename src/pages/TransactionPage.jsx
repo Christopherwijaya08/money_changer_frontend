@@ -6,6 +6,7 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 import TextField from '@mui/material/TextField'
+import InputAdornment from '@mui/material/InputAdornment'
 import MenuItem from '@mui/material/MenuItem'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -27,6 +28,7 @@ import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerSearchField from '../components/CustomerSearchField'
 import ReceiptDialog from '../components/ReceiptDialog'
 import { useBranch } from '../context/BranchContext'
+import { useThousandSeparator } from '../hooks/useThousandSeparator'
 
 const REVIEW_THRESHOLD = 50000000
 
@@ -68,7 +70,6 @@ const transactionSchema = yup.object({
 export default function TransactionPage() {
   const {
     control,
-    register,
     handleSubmit,
     watch,
     setValue,
@@ -233,27 +234,59 @@ export default function TransactionPage() {
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Nominal"
-                error={!!errors.amount}
-                helperText={errors.amount?.message}
-                {...register('amount')}
+              <Controller
+                name="amount"
+                control={control}
+                render={({ field }) => {
+                  const [display, handleChange] = useThousandSeparator(field.value, field.onChange)
+                  return (
+                    <TextField
+                      fullWidth
+                      inputMode="numeric"
+                      label="Nominal"
+                      error={!!errors.amount}
+                      helperText={errors.amount?.message}
+                      value={display}
+                      onChange={handleChange}
+                      slotProps={{
+                        input: {
+                          startAdornment: selectedCurrency && (
+                            <InputAdornment position="start">{selectedCurrency.code}</InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                  )
+                }}
               />
             </Grid>
 
             <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField fullWidth label="Kurs Default" value={rateDefault ?? ''} disabled />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField
                 fullWidth
-                type="number"
-                label="Kurs Aktual (Nego)"
-                error={!!errors.rateActual}
-                helperText={errors.rateActual?.message}
-                {...register('rateActual')}
+                label="Kurs Default"
+                value={rateDefault ? rateDefault.toLocaleString('id-ID') : ''}
+                disabled
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <Controller
+                name="rateActual"
+                control={control}
+                render={({ field }) => {
+                  const [display, handleChange] = useThousandSeparator(field.value, field.onChange)
+                  return (
+                    <TextField
+                      fullWidth
+                      inputMode="numeric"
+                      label="Kurs Aktual (Nego)"
+                      error={!!errors.rateActual}
+                      helperText={errors.rateActual?.message}
+                      value={display}
+                      onChange={handleChange}
+                    />
+                  )
+                }}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { Link } from 'react-router-dom'
@@ -10,6 +10,7 @@ import Button from '@mui/material/Button'
 import Grid from '@mui/material/Grid'
 import Alert from '@mui/material/Alert'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import { useThousandSeparator } from '../hooks/useThousandSeparator'
 
 const DEFAULT_THRESHOLD = 50000000
 
@@ -26,7 +27,7 @@ export default function ThresholdSettingsPage() {
   const [saved, setSaved] = useState(false)
 
   const {
-    register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm({ defaultValues: { threshold: DEFAULT_THRESHOLD }, resolver: yupResolver(schema) })
@@ -62,13 +63,23 @@ export default function ThresholdSettingsPage() {
         <form onSubmit={handleSubmit(onSubmit)} style={{ marginTop: '16px' }}>
           <Grid container spacing={2}>
             <Grid size={12}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Batas Nominal (Rp)"
-                error={!!errors.threshold}
-                helperText={errors.threshold?.message}
-                {...register('threshold')}
+              <Controller
+                name="threshold"
+                control={control}
+                render={({ field }) => {
+                  const [display, handleChange] = useThousandSeparator(field.value, field.onChange)
+                  return (
+                    <TextField
+                      fullWidth
+                      inputMode="numeric"
+                      label="Batas Nominal (Rp)"
+                      error={!!errors.threshold}
+                      helperText={errors.threshold?.message}
+                      value={display}
+                      onChange={handleChange}
+                    />
+                  )
+                }}
               />
             </Grid>
             <Grid size={12} className="flex justify-end">
