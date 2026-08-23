@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
@@ -15,6 +15,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
+import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
 import { cashBalances, cashDeposits as initialCashDeposits, currencies, transactions } from '../mocks/data'
 import { useBranch } from '../context/BranchContext'
@@ -74,11 +75,6 @@ const depositSchema = yup.object({
     .typeError('Nominal harus diisi')
     .positive('Nominal harus lebih dari 0')
     .required('Nominal harus diisi'),
-  rate: yup
-    .number()
-    .typeError('Kurs harus diisi')
-    .positive('Kurs harus lebih dari 0')
-    .required('Kurs harus diisi'),
   note: yup.string().nullable(),
 })
 
@@ -94,7 +90,7 @@ function CashDepositTab() {
     reset,
     formState: { errors },
   } = useForm({
-    defaultValues: { currencyCode: '', amount: '', rate: '', note: '' },
+    defaultValues: { currencyCode: '', amount: '', note: '' },
     resolver: yupResolver(depositSchema),
   })
 
@@ -105,7 +101,6 @@ function CashDepositTab() {
         branchId: selectedBranchId,
         currencyCode: data.currencyCode,
         amount: Number(data.amount),
-        rate: Number(data.rate),
         note: data.note || '',
         createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
       },
@@ -126,7 +121,7 @@ function CashDepositTab() {
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 3 }}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <Controller
               name="currencyCode"
               control={control}
@@ -150,7 +145,7 @@ function CashDepositTab() {
               )}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <Controller
               name="amount"
               control={control}
@@ -170,27 +165,7 @@ function CashDepositTab() {
               }}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <Controller
-              name="rate"
-              control={control}
-              render={({ field }) => {
-                const [display, handleChange] = useThousandSeparator(field.value, field.onChange)
-                return (
-                  <TextField
-                    fullWidth
-                    inputMode="numeric"
-                    label="Kurs"
-                    error={!!errors.rate}
-                    helperText={errors.rate?.message}
-                    value={display}
-                    onChange={handleChange}
-                  />
-                )
-              }}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <TextField fullWidth label="Keterangan" {...register('note')} />
           </Grid>
           <Grid size={12} className="flex justify-end">
@@ -208,7 +183,6 @@ function CashDepositTab() {
               <TableCell>Tanggal</TableCell>
               <TableCell>Mata Uang</TableCell>
               <TableCell align="right">Nominal</TableCell>
-              <TableCell align="right">Kurs</TableCell>
               <TableCell>Keterangan</TableCell>
             </TableRow>
           </TableHead>
@@ -218,13 +192,12 @@ function CashDepositTab() {
                 <TableCell>{d.createdAt}</TableCell>
                 <TableCell>{d.currencyCode}</TableCell>
                 <TableCell align="right">{formatBalance(d.amount)}</TableCell>
-                <TableCell align="right">{formatBalance(d.rate)}</TableCell>
                 <TableCell>{d.note}</TableCell>
               </TableRow>
             ))}
             {history.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={4} align="center">
                   Belum ada riwayat setor kas untuk cabang ini.
                 </TableCell>
               </TableRow>
@@ -275,9 +248,17 @@ function ReconciliationTab() {
   const branchName = branches.find((b) => b.id === selectedBranchId)?.name
   const [date, setDate] = useState('2026-08-16')
   const [physicalCounts, setPhysicalCounts] = useState({})
+  const [saved, setSaved] = useState(false)
+
+  // Physical counts are per-date; switching dates starts a fresh, unsaved count.
+  useEffect(() => {
+    setPhysicalCounts({})
+    setSaved(false)
+  }, [date])
 
   function handlePhysicalChange(code, value) {
     setPhysicalCounts((prev) => ({ ...prev, [code]: value === '' ? '' : Number(value) }))
+    setSaved(false)
   }
 
   const rows = cashBalances
@@ -325,6 +306,13 @@ function ReconciliationTab() {
       }
     })
 
+  const hasAnyCount = rows.some((row) => row.saldoFisik !== '')
+
+  function handleSaveReconciliation() {
+    // ponytail: no backend wiring yet (Fase 5 integration); confirms the count was recorded for this date
+    setSaved(true)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -340,6 +328,11 @@ function ReconciliationTab() {
           onChange={(e) => setDate(e.target.value)}
         />
       </div>
+      {saved && (
+        <Alert severity="success" onClose={() => setSaved(false)}>
+          Rekonsiliasi tanggal {date} berhasil disimpan.
+        </Alert>
+      )}
       <TableContainer>
         <Table size="small">
           <TableHead>
@@ -367,6 +360,11 @@ function ReconciliationTab() {
           </TableBody>
         </Table>
       </TableContainer>
+      <div className="flex justify-end">
+        <Button variant="contained" disabled={!hasAnyCount} onClick={handleSaveReconciliation}>
+          Simpan Rekonsiliasi
+        </Button>
+      </div>
     </div>
   )
 }
