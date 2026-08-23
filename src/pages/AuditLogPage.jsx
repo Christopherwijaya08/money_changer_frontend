@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
@@ -11,8 +11,12 @@ import TableBody from '@mui/material/TableBody'
 import TableRow from '@mui/material/TableRow'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
+import TablePagination from '@mui/material/TablePagination'
 import Chip from '@mui/material/Chip'
+import Alert from '@mui/material/Alert'
+import { apiClient } from '../api/apiClient'
 import { useAuth } from '../context/AuthContext'
+import { formatDateTime } from '../utils/formatDateTime'
 
 const ACTION_TYPES = {
   login: { label: 'Login', color: 'default' },
@@ -21,70 +25,70 @@ const ACTION_TYPES = {
   transaction_delete: { label: 'Hapus Transaksi', color: 'error' },
 }
 
-// ponytail: mock data for this task — wired to a real /audit-logs endpoint in the
-// integration task that follows (mirrors every other feature this session).
-const mockLogs = [
-  {
-    id: 1,
-    type: 'login',
-    user: 'Siti Rahayu',
-    detail: 'Login berhasil',
-    createdAt: '2026-08-23 08:02',
-  },
-  {
-    id: 2,
-    type: 'login',
-    user: 'Budi Hartono',
-    detail: 'Login berhasil',
-    createdAt: '2026-08-23 08:05',
-  },
-  {
-    id: 3,
-    type: 'exchange_rate',
-    user: 'Budi Hartono',
-    detail: 'USD: kurs beli 15.700 → 15.750, kurs jual 15.800 → 15.850',
-    createdAt: '2026-08-23 08:10',
-  },
-  {
-    id: 4,
-    type: 'transaction_edit',
-    user: 'Budi Hartono',
-    detail: 'TRX-20260823-001: kurs aktual 16.900 → 16.950',
-    createdAt: '2026-08-23 09:12',
-  },
-  {
-    id: 5,
-    type: 'transaction_delete',
-    user: 'Siti Rahayu',
-    detail: 'TRX-20260822-004 dihapus (salah input nominal)',
-    createdAt: '2026-08-22 16:40',
-  },
-  {
-    id: 6,
-    type: 'login',
-    user: 'Budi Hartono',
-    detail: 'Login berhasil',
-    createdAt: '2026-08-22 08:00',
-  },
-]
+function mapLog(l) {
+  return {
+    id: l.id,
+    type: l.action,
+    user: l.user_name,
+    detail: l.description,
+    createdAt: formatDateTime(l.created_at),
+  }
+}
 
 export default function AuditLogPage() {
   const { role } = useAuth()
   const [filterType, setFilterType] = useState('')
+  const [logs, setLogs] = useState([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(15)
+  const [pageError, setPageError] = useState('')
+
+  useEffect(() => {
+    if (role !== 'owner') return
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await apiClient.get('/audit-logs', {
+          action: filterType || undefined,
+          page: page + 1,
+          per_page: rowsPerPage,
+        })
+        if (cancelled) return
+        setLogs(res.data.map(mapLog))
+        setTotal(res.meta.total)
+      } catch (err) {
+        if (!cancelled) setPageError(err.message ?? 'Gagal memuat audit log')
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [role, filterType, page, rowsPerPage])
 
   if (role !== 'owner') {
     return <Navigate to="/" replace />
   }
 
-  const filteredLogs = mockLogs
-    .filter((log) => !filterType || log.type === filterType)
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  function handleFilterChange(value) {
+    setFilterType(value)
+    setPage(0)
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <Typography variant="h5" component="h1" className="font-medium">
         Audit Log
       </Typography>
+
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
 
       <Paper className="p-6">
         <div className="flex items-center justify-between gap-4 mb-4">
@@ -93,7 +97,7 @@ export default function AuditLogPage() {
             size="small"
             label="Jenis Aktivitas"
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+            onChange={(e) => handleFilterChange(e.target.value)}
             sx={{ minWidth: 200 }}
           >
             <MenuItem value="">Semua</MenuItem>
@@ -104,7 +108,7 @@ export default function AuditLogPage() {
             ))}
           </TextField>
           {filterType && (
-            <Button size="small" onClick={() => setFilterType('')}>
+            <Button size="small" onClick={() => handleFilterChange('')}>
               Reset Filter
             </Button>
           )}
@@ -121,21 +125,21 @@ export default function AuditLogPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredLogs.map((log) => (
+              {logs.map((log) => (
                 <TableRow key={log.id} hover>
                   <TableCell>{log.createdAt}</TableCell>
                   <TableCell>{log.user}</TableCell>
                   <TableCell>
                     <Chip
-                      label={ACTION_TYPES[log.type].label}
-                      color={ACTION_TYPES[log.type].color}
+                      label={ACTION_TYPES[log.type]?.label ?? log.type}
+                      color={ACTION_TYPES[log.type]?.color ?? 'default'}
                       size="small"
                     />
                   </TableCell>
                   <TableCell>{log.detail}</TableCell>
                 </TableRow>
               ))}
-              {filteredLogs.length === 0 && (
+              {logs.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} align="center">
                     Tidak ada aktivitas yang cocok dengan filter.
@@ -145,6 +149,19 @@ export default function AuditLogPage() {
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          component="div"
+          count={total}
+          page={page}
+          onPageChange={(_, newPage) => setPage(newPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(Number(e.target.value))
+            setPage(0)
+          }}
+          rowsPerPageOptions={[15, 25, 50]}
+          labelRowsPerPage="Baris per halaman"
+        />
       </Paper>
     </div>
   )
