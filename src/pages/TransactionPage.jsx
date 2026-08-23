@@ -30,13 +30,10 @@ import ReceiptDialog from '../components/ReceiptDialog'
 import { useBranch } from '../context/BranchContext'
 import { useAuth } from '../context/AuthContext'
 import { useThousandSeparator } from '../hooks/useThousandSeparator'
+import { formatDateTime } from '../utils/formatDateTime'
 
 function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
-}
-
-function formatDateTime(iso) {
-  return iso ? iso.slice(0, 16).replace('T', ' ') : ''
 }
 
 function mapCurrency(currency, rateByCurrencyId) {

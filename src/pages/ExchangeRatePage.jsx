@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
@@ -16,13 +16,14 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
+import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
 import EditIcon from '@mui/icons-material/Edit'
 import MenuItem from '@mui/material/MenuItem'
-import { currencies as initialCurrencies, exchangeRateHistory as initialHistory } from '../mocks/data'
+import { api } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 import { useThousandSeparator } from '../hooks/useThousandSeparator'
-
-const CURRENT_USER = 'Admin'
+import { formatDateTime } from '../utils/formatDateTime'
 
 const rateSchema = yup.object({
   rateBuy: yup
@@ -40,9 +41,36 @@ const rateSchema = yup.object({
     }),
 })
 
+function mapRate(r) {
+  return {
+    id: r.currency_id,
+    code: r.currency_code,
+    rateBuy: Number(r.rate_buy ?? 0),
+    rateSell: Number(r.rate_sell ?? 0),
+    updatedAt: formatDateTime(r.updated_at),
+    updatedBy: r.updated_by,
+  }
+}
+
+function mapHistory(h, currencyCode) {
+  return {
+    id: h.id,
+    currencyCode,
+    oldBuy: Number(h.old_buy),
+    oldSell: Number(h.old_sell),
+    newBuy: Number(h.new_buy),
+    newSell: Number(h.new_sell),
+    changedBy: h.changed_by,
+    changedAt: formatDateTime(h.changed_at),
+  }
+}
+
 export default function ExchangeRatePage() {
-  const [currencies, setCurrencies] = useState(initialCurrencies)
-  const [history, setHistory] = useState(initialHistory)
+  const { userId } = useAuth()
+  const [currencies, setCurrencies] = useState([])
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [pageError, setPageError] = useState('')
   const [editing, setEditing] = useState(null)
   const [filterCurrency, setFilterCurrency] = useState('')
 
@@ -57,9 +85,33 @@ export default function ExchangeRatePage() {
   const rateBuy = watch('rateBuy')
   const rateSell = watch('rateSell')
 
-  const filteredHistory = filterCurrency
-    ? history.filter((h) => h.currencyCode === filterCurrency)
-    : history
+  async function loadHistory(currencyList) {
+    const results = await Promise.all(
+      currencyList.map((c) => api.get(`/exchange-rates/${c.id}/history`).then((res) => res.data.map((h) => mapHistory(h, c.code))))
+    )
+    const merged = results.flat().sort((a, b) => (a.changedAt < b.changedAt ? 1 : -1))
+    setHistory(merged)
+  }
+
+  async function loadAll() {
+    try {
+      const ratesRes = await api.get('/exchange-rates')
+      const loadedCurrencies = ratesRes.data.map(mapRate)
+      setCurrencies(loadedCurrencies)
+      await loadHistory(loadedCurrencies)
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal memuat data kurs')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const filteredHistory = filterCurrency ? history.filter((h) => h.currencyCode === filterCurrency) : history
 
   function openEdit(currency) {
     setEditing(currency)
@@ -70,32 +122,21 @@ export default function ExchangeRatePage() {
     setEditing(null)
   }
 
-  function onSubmit(data) {
-    const now = new Date().toISOString().slice(0, 16).replace('T', ' ')
-    const newBuy = Number(data.rateBuy)
-    const newSell = Number(data.rateSell)
-
-    setCurrencies((list) =>
-      list.map((c) =>
-        c.id === editing.id ? { ...c, rateBuy: newBuy, rateSell: newSell, updatedAt: now, updatedBy: CURRENT_USER } : c
-      )
-    )
-
-    setHistory((list) => [
-      {
-        id: Date.now(),
-        currencyCode: editing.code,
-        oldBuy: editing.rateBuy,
-        oldSell: editing.rateSell,
-        newBuy,
-        newSell,
-        changedBy: CURRENT_USER,
-        changedAt: now,
-      },
-      ...list,
-    ])
-
-    closeEdit()
+  async function onSubmit(data) {
+    try {
+      setPageError('')
+      const res = await api.put(`/exchange-rates/${editing.id}`, {
+        rate_buy: Number(data.rateBuy),
+        rate_sell: Number(data.rateSell),
+        user_id: userId,
+      })
+      const updated = mapRate(res.data)
+      setCurrencies((list) => list.map((c) => (c.id === updated.id ? updated : c)))
+      await loadHistory(currencies.map((c) => (c.id === updated.id ? updated : c)))
+      closeEdit()
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menyimpan kurs')
+    }
   }
 
   return (
@@ -104,40 +145,50 @@ export default function ExchangeRatePage() {
         Master Kurs
       </Typography>
 
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
+
       <Paper className="p-6">
         <Typography variant="h6" className="mb-4">
           Kurs Harian
         </Typography>
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Mata Uang</TableCell>
-                <TableCell align="right">Kurs Beli</TableCell>
-                <TableCell align="right">Kurs Jual</TableCell>
-                <TableCell>Terakhir Diubah</TableCell>
-                <TableCell>Diubah oleh</TableCell>
-                <TableCell align="right">Aksi</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {currencies.map((c) => (
-                <TableRow key={c.id} hover>
-                  <TableCell>{c.code}</TableCell>
-                  <TableCell align="right">{c.rateBuy.toLocaleString('id-ID')}</TableCell>
-                  <TableCell align="right">{c.rateSell.toLocaleString('id-ID')}</TableCell>
-                  <TableCell>{c.updatedAt}</TableCell>
-                  <TableCell>{c.updatedBy}</TableCell>
-                  <TableCell align="right">
-                    <Button size="small" startIcon={<EditIcon />} onClick={() => openEdit(c)}>
-                      Update
-                    </Button>
-                  </TableCell>
+        {loading ? (
+          <Typography color="text.secondary">Memuat data kurs...</Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Mata Uang</TableCell>
+                  <TableCell align="right">Kurs Beli</TableCell>
+                  <TableCell align="right">Kurs Jual</TableCell>
+                  <TableCell>Terakhir Diubah</TableCell>
+                  <TableCell>Diubah oleh</TableCell>
+                  <TableCell align="right">Aksi</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {currencies.map((c) => (
+                  <TableRow key={c.id} hover>
+                    <TableCell>{c.code}</TableCell>
+                    <TableCell align="right">{c.rateBuy.toLocaleString('id-ID')}</TableCell>
+                    <TableCell align="right">{c.rateSell.toLocaleString('id-ID')}</TableCell>
+                    <TableCell>{c.updatedAt}</TableCell>
+                    <TableCell>{c.updatedBy}</TableCell>
+                    <TableCell align="right">
+                      <Button size="small" startIcon={<EditIcon />} onClick={() => openEdit(c)}>
+                        Update
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Paper>
 
       <Paper className="p-6">
