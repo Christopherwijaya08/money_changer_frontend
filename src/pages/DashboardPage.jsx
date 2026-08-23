@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
@@ -12,15 +12,13 @@ import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import Chip from '@mui/material/Chip'
+import Alert from '@mui/material/Alert'
 import PaidIcon from '@mui/icons-material/Paid'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
-import { transactions } from '../mocks/data'
+import { apiClient } from '../api/apiClient'
+import { mapTransaction } from '../api/mappers'
 import { useBranch } from '../context/BranchContext'
 import ReceiptDialog from '../components/ReceiptDialog'
-
-function getLatestDate() {
-  return transactions.reduce((max, t) => (t.createdAt.slice(0, 10) > max ? t.createdAt.slice(0, 10) : max), '')
-}
 
 function StatCard({ icon, label, value }) {
   return (
@@ -56,32 +54,47 @@ function StatCard({ icon, label, value }) {
 function SummaryCards() {
   const { selectedBranchId, branches } = useBranch()
   const branchName = branches.find((b) => b.id === selectedBranchId)?.name
-  const latestDate = getLatestDate()
+  const [summary, setSummary] = useState(null)
+  const [pageError, setPageError] = useState('')
 
-  const todayTransactions = transactions.filter(
-    (t) => t.branchId === selectedBranchId && t.createdAt.startsWith(latestDate)
-  )
+  useEffect(() => {
+    if (!selectedBranchId) return
+    let cancelled = false
 
-  const omzet = todayTransactions.reduce((sum, t) => sum + t.totalAmount, 0)
+    async function load() {
+      try {
+        const res = await apiClient.get('/dashboard/summary', { branch_id: selectedBranchId })
+        if (!cancelled) setSummary(res)
+      } catch (err) {
+        if (!cancelled) setPageError(err.message ?? 'Gagal memuat ringkasan')
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBranchId])
 
   return (
     <div className="flex flex-col gap-2">
       <Typography variant="body2" color="text.secondary">
-        Menampilkan ringkasan tanggal {latestDate} untuk cabang: {branchName}
+        Menampilkan ringkasan tanggal {summary?.date} untuk cabang: {branchName}
       </Typography>
+      {pageError && <Alert severity="error">{pageError}</Alert>}
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
           <StatCard
             icon={<PaidIcon />}
             label="Omzet Hari Ini"
-            value={`Rp ${omzet.toLocaleString('id-ID')}`}
+            value={`Rp ${Number(summary?.omzet ?? 0).toLocaleString('id-ID')}`}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <StatCard
             icon={<ReceiptLongIcon />}
             label="Jumlah Transaksi Hari Ini"
-            value={todayTransactions.length}
+            value={summary?.transaction_count ?? 0}
           />
         </Grid>
       </Grid>
@@ -98,22 +111,28 @@ const PERIOD_OPTIONS = [
 function TrendChart() {
   const { selectedBranchId } = useBranch()
   const [period, setPeriod] = useState(7)
+  const [data, setData] = useState([])
 
-  const latestDate = getLatestDate()
-  const days = Array.from({ length: period }, (_, i) => {
-    const d = new Date(latestDate)
-    d.setDate(d.getDate() - (period - 1 - i))
-    return d.toISOString().slice(0, 10)
-  })
+  useEffect(() => {
+    if (!selectedBranchId) return
+    let cancelled = false
 
-  const data = days.map((date) => ({
-    date,
-    total: transactions
-      .filter((t) => t.branchId === selectedBranchId && t.createdAt.startsWith(date))
-      .reduce((sum, t) => sum + t.totalAmount, 0),
-  }))
+    async function load() {
+      try {
+        const res = await apiClient.get('/dashboard/trend', { branch_id: selectedBranchId, period })
+        if (!cancelled) setData(res.data)
+      } catch {
+        if (!cancelled) setData([])
+      }
+    }
 
-  const max = Math.max(...data.map((d) => d.total), 1)
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBranchId, period])
+
+  const max = Math.max(...data.map((d) => Number(d.omzet)), 1)
 
   return (
     <Paper className="p-6">
@@ -136,30 +155,33 @@ function TrendChart() {
         </TextField>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5, height: 180 }}>
-        {data.map((d) => (
-          <Box
-            key={d.date}
-            sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, height: '100%' }}
-          >
-            <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%' }}>
-              <Box
-                title={`${d.date}: Rp ${d.total.toLocaleString('id-ID')}`}
-                data-testid="trend-bar"
-                sx={{
-                  width: '100%',
-                  height: `${Math.max((d.total / max) * 100, 2)}%`,
-                  bgcolor: 'primary.main',
-                  borderRadius: '4px 4px 0 0',
-                }}
-              />
+        {data.map((d) => {
+          const total = Number(d.omzet)
+          return (
+            <Box
+              key={d.date}
+              sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, height: '100%' }}
+            >
+              <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%' }}>
+                <Box
+                  title={`${d.date}: Rp ${total.toLocaleString('id-ID')}`}
+                  data-testid="trend-bar"
+                  sx={{
+                    width: '100%',
+                    height: `${Math.max((total / max) * 100, 2)}%`,
+                    bgcolor: 'primary.main',
+                    borderRadius: '4px 4px 0 0',
+                  }}
+                />
+              </Box>
+              {period <= 7 && (
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9 }}>
+                  {d.date.slice(5)}
+                </Typography>
+              )}
             </Box>
-            {period <= 7 && (
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9 }}>
-                {d.date.slice(5)}
-              </Typography>
-            )}
-          </Box>
-        ))}
+          )
+        })}
       </Box>
     </Paper>
   )
@@ -167,10 +189,30 @@ function TrendChart() {
 
 function ReviewList() {
   const { selectedBranchId } = useBranch()
+  const [needsReview, setNeedsReview] = useState([])
 
-  const needsReview = transactions
-    .filter((t) => t.branchId === selectedBranchId && t.requiresReview)
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  useEffect(() => {
+    if (!selectedBranchId) return
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await apiClient.get('/transactions', {
+          branch_id: selectedBranchId,
+          requires_review: 1,
+          per_page: 50,
+        })
+        if (!cancelled) setNeedsReview(res.data.map(mapTransaction))
+      } catch {
+        if (!cancelled) setNeedsReview([])
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBranchId])
 
   return (
     <Paper className="p-6 h-full flex flex-col">
@@ -209,12 +251,27 @@ const RECENT_LIMIT = 5
 
 function RecentTransactionsList() {
   const { selectedBranchId } = useBranch()
+  const [recent, setRecent] = useState([])
   const [selected, setSelected] = useState(null)
 
-  const recent = transactions
-    .filter((t) => t.branchId === selectedBranchId)
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .slice(0, RECENT_LIMIT)
+  useEffect(() => {
+    if (!selectedBranchId) return
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await apiClient.get('/transactions', { branch_id: selectedBranchId, per_page: RECENT_LIMIT })
+        if (!cancelled) setRecent(res.data.map(mapTransaction))
+      } catch {
+        if (!cancelled) setRecent([])
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBranchId])
 
   return (
     <Paper className="p-6 h-full flex flex-col">
