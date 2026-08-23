@@ -134,7 +134,7 @@ export default function AppShell({ children }) {
   )
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { selectedBranchId, setSelectedBranchId } = useBranch()
+  const { branches, selectedBranchId, setSelectedBranchId } = useBranch()
   const { role } = useAuth()
 
   const visibleGroups = menuGroups
@@ -192,7 +192,7 @@ export default function AppShell({ children }) {
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: isDesktop ? 'auto' : '100%' }}>
             <Box sx={{ flex: isDesktop ? 'none' : 1 }}>
-              <BranchSelector value={selectedBranchId} onChange={setSelectedBranchId} />
+              <BranchSelector value={selectedBranchId} onChange={setSelectedBranchId} options={branches} />
             </Box>
             <UserMenu />
           </Box>

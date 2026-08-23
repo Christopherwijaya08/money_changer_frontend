@@ -1,15 +1,29 @@
-import { createContext, useContext, useState } from 'react'
-import { branches } from '../mocks/data'
-
-const activeBranches = branches.filter((b) => b.isActive)
+import { createContext, useContext, useEffect, useState } from 'react'
+import { apiClient } from '../api/apiClient'
+import { mapBranch } from '../api/mappers'
 
 const BranchContext = createContext(null)
 
 export function BranchProvider({ children }) {
-  const [selectedBranchId, setSelectedBranchId] = useState(activeBranches[0]?.id ?? '')
+  const [branches, setBranches] = useState([])
+  const [selectedBranchId, setSelectedBranchId] = useState('')
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await apiClient.get('/branches', { active_only: true })
+        const loaded = res.data.map(mapBranch)
+        setBranches(loaded)
+        setSelectedBranchId((current) => current || loaded[0]?.id || '')
+      } catch {
+        // ponytail: silent — pages already render gracefully with an empty branch list
+      }
+    }
+    load()
+  }, [])
 
   return (
-    <BranchContext.Provider value={{ branches: activeBranches, selectedBranchId, setSelectedBranchId }}>
+    <BranchContext.Provider value={{ branches, selectedBranchId, setSelectedBranchId }}>
       {children}
     </BranchContext.Provider>
   )

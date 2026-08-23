@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
@@ -14,18 +14,34 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogActions from '@mui/material/DialogActions'
+import Alert from '@mui/material/Alert'
 import AddBusinessIcon from '@mui/icons-material/AddBusiness'
 import EditIcon from '@mui/icons-material/Edit'
 import BlockIcon from '@mui/icons-material/Block'
-import { branches as initialBranches } from '../mocks/data'
+import { apiClient } from '../api/apiClient'
+import { mapBranch } from '../api/mappers'
 import BranchFormDialog from '../components/BranchFormDialog'
 import StatusChip from '../components/StatusChip'
 
 export default function BranchPage() {
-  const [branches, setBranches] = useState(initialBranches)
+  const [branches, setBranches] = useState([])
+  const [pageError, setPageError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingBranch, setEditingBranch] = useState(null)
   const [deactivatingBranch, setDeactivatingBranch] = useState(null)
+
+  async function loadBranches() {
+    try {
+      const res = await apiClient.get('/branches')
+      setBranches(res.data.map(mapBranch))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal memuat data cabang')
+    }
+  }
+
+  useEffect(() => {
+    loadBranches()
+  }, [])
 
   function openAdd() {
     setEditingBranch(null)
@@ -37,18 +53,37 @@ export default function BranchPage() {
     setDialogOpen(true)
   }
 
-  function handleSave(saved) {
-    setBranches((list) => {
-      const exists = list.some((b) => b.id === saved.id)
-      return exists ? list.map((b) => (b.id === saved.id ? saved : b)) : [saved, ...list]
-    })
+  async function handleSave(formData) {
+    const isEditing = !!editingBranch
+    const fields = { name: formData.name, address: formData.address }
+
+    try {
+      setPageError('')
+      const response = isEditing
+        ? await apiClient.put(`/branches/${editingBranch.id}`, fields)
+        : await apiClient.post('/branches', fields)
+      const saved = mapBranch(response.data)
+      setBranches((list) => (isEditing ? list.map((b) => (b.id === saved.id ? saved : b)) : [saved, ...list]))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menyimpan cabang')
+    }
   }
 
-  function confirmDeactivate() {
-    setBranches((list) =>
-      list.map((b) => (b.id === deactivatingBranch.id ? { ...b, isActive: false } : b))
-    )
-    setDeactivatingBranch(null)
+  async function confirmDeactivate() {
+    try {
+      setPageError('')
+      const response = await apiClient.put(`/branches/${deactivatingBranch.id}`, {
+        name: deactivatingBranch.name,
+        address: deactivatingBranch.address,
+        is_active: false,
+      })
+      const saved = mapBranch(response.data)
+      setBranches((list) => list.map((b) => (b.id === saved.id ? saved : b)))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menonaktifkan cabang')
+    } finally {
+      setDeactivatingBranch(null)
+    }
   }
 
   return (
@@ -61,6 +96,12 @@ export default function BranchPage() {
           Tambah Cabang
         </Button>
       </div>
+
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
 
       <Paper className="p-6">
         <TableContainer>

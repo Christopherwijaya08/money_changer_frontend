@@ -12,6 +12,15 @@ export function mapCustomer(c) {
   }
 }
 
+export function mapBranch(b) {
+  return {
+    id: b.id,
+    name: b.name,
+    address: b.address,
+    isActive: b.is_active,
+  }
+}
+
 export function mapEmployee(e) {
   return {
     id: e.id,
