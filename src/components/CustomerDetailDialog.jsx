@@ -16,7 +16,8 @@ import TableContainer from '@mui/material/TableContainer'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Chip from '@mui/material/Chip'
-import { transactions } from '../mocks/data'
+import { api } from '../api/client'
+import { mapTransaction } from '../api/mappers'
 import KtpPhotoAvatar from './KtpPhotoAvatar'
 
 function formatRupiah(value) {
@@ -28,6 +29,7 @@ export default function CustomerDetailDialog({ open, onClose, customer }) {
   const [filterType, setFilterType] = useState('')
   const [orderBy, setOrderBy] = useState('createdAt')
   const [order, setOrder] = useState('desc')
+  const [history, setHistory] = useState([])
 
   useEffect(() => {
     if (!open) return
@@ -37,10 +39,24 @@ export default function CustomerDetailDialog({ open, onClose, customer }) {
     setOrder('desc')
   }, [open, customer])
 
-  const history = useMemo(() => {
-    if (!customer) return []
-    return transactions.filter((t) => t.customerName === customer.name)
-  }, [customer])
+  useEffect(() => {
+    if (!open || !customer) return
+    let cancelled = false
+
+    async function loadHistory() {
+      try {
+        const res = await api.get(`/customers/${customer.id}/transactions`, { per_page: 100 })
+        if (!cancelled) setHistory(res.data.map(mapTransaction))
+      } catch {
+        if (!cancelled) setHistory([])
+      }
+    }
+
+    loadHistory()
+    return () => {
+      cancelled = true
+    }
+  }, [open, customer])
 
   const currencyOptions = useMemo(() => [...new Set(history.map((t) => t.currencyCode))], [history])
 

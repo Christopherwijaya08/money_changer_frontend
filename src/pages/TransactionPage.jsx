@@ -24,13 +24,13 @@ import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import PrintIcon from '@mui/icons-material/Print'
 import { api } from '../api/client'
+import { mapCustomer, mapTransaction } from '../api/mappers'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerSearchField from '../components/CustomerSearchField'
 import ReceiptDialog from '../components/ReceiptDialog'
 import { useBranch } from '../context/BranchContext'
 import { useAuth } from '../context/AuthContext'
 import { useThousandSeparator } from '../hooks/useThousandSeparator'
-import { formatDateTime } from '../utils/formatDateTime'
 
 function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
@@ -49,33 +49,6 @@ function mapCurrency(currency, rateByCurrencyId) {
 
 function mapEmployee(e) {
   return { id: e.id, name: e.name, position: e.position }
-}
-
-function mapCustomer(c) {
-  return {
-    id: c.id,
-    name: c.name,
-    identityNumber: c.identity_number,
-    phone: c.phone,
-    address: c.address,
-    hasKtpPhoto: c.has_ktp_photo,
-  }
-}
-
-function mapTransaction(t) {
-  return {
-    id: t.id,
-    transactionNumber: t.transaction_number,
-    type: t.type,
-    currencyCode: t.currency_code,
-    amount: Number(t.amount),
-    rateActual: Number(t.rate_actual),
-    totalAmount: Number(t.total_amount),
-    customerName: t.customer_name,
-    employeeName: t.employee_name,
-    requiresReview: t.requires_review,
-    createdAt: formatDateTime(t.created_at),
-  }
 }
 
 const emptyFormValues = {

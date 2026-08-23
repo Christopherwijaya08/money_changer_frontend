@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
@@ -10,9 +10,9 @@ import Button from '@mui/material/Button'
 import Grid from '@mui/material/Grid'
 import Alert from '@mui/material/Alert'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import { api } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 import { useThousandSeparator } from '../hooks/useThousandSeparator'
-
-const DEFAULT_THRESHOLD = 50000000
 
 const schema = yup.object({
   threshold: yup
@@ -23,18 +23,52 @@ const schema = yup.object({
 })
 
 export default function ThresholdSettingsPage() {
-  const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD)
+  const { userId } = useAuth()
+  const [threshold, setThreshold] = useState(null)
   const [saved, setSaved] = useState(false)
+  const [pageError, setPageError] = useState('')
 
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors },
-  } = useForm({ defaultValues: { threshold: DEFAULT_THRESHOLD }, resolver: yupResolver(schema) })
+  } = useForm({ defaultValues: { threshold: '' }, resolver: yupResolver(schema) })
 
-  function onSubmit(data) {
-    setThreshold(Number(data.threshold))
-    setSaved(true)
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await api.get('/settings/threshold')
+        if (cancelled) return
+        const value = Number(res.data.review_threshold)
+        setThreshold(value)
+        reset({ threshold: value })
+      } catch (err) {
+        if (!cancelled) setPageError(err.message ?? 'Gagal memuat pengaturan threshold')
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function onSubmit(data) {
+    try {
+      setPageError('')
+      const res = await api.put('/settings/threshold', {
+        review_threshold: Number(data.threshold),
+        user_id: userId,
+      })
+      setThreshold(Number(res.data.review_threshold))
+      setSaved(true)
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menyimpan threshold')
+    }
   }
 
   return (
@@ -54,6 +88,11 @@ export default function ThresholdSettingsPage() {
           kepatuhan APU-PPT.
         </Typography>
 
+        {pageError && (
+          <Alert severity="error" className="mb-4" onClose={() => setPageError('')}>
+            {pageError}
+          </Alert>
+        )}
         {saved && (
           <Alert severity="success" className="mb-4" onClose={() => setSaved(false)}>
             Batas nominal berhasil disimpan: Rp {threshold.toLocaleString('id-ID')}
