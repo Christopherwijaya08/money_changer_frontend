@@ -141,7 +141,7 @@ export default function CustomerPage() {
               {customerList.map((c) => (
                 <TableRow key={c.id} hover>
                   <TableCell>
-                    <KtpPhotoAvatar src={c.idPhotoUrl} sx={{ width: 48, height: 36 }} />
+                    <KtpPhotoAvatar customerId={c.id} hasPhoto={c.hasKtpPhoto} sx={{ width: 48, height: 36 }} />
                   </TableCell>
                   <TableCell>{c.name}</TableCell>
                   <TableCell>{c.identityNumber}</TableCell>

@@ -1,40 +1,51 @@
 import { createContext, useContext, useState } from 'react'
+import { apiClient } from '../api/apiClient'
 
-// ponytail: localStorage until the real login API (Fase 5 backend) issues a token
-const STORAGE_KEY = 'money-changer-authenticated'
+export const TOKEN_KEY = 'money-changer-token'
 const ROLE_KEY = 'money-changer-role'
 const USER_ID_KEY = 'money-changer-user-id'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem(STORAGE_KEY) === 'true')
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY))
   const [role, setRole] = useState(() => localStorage.getItem(ROLE_KEY))
   const [userId, setUserId] = useState(() => {
     const stored = localStorage.getItem(USER_ID_KEY)
     return stored ? Number(stored) : null
   })
 
-  function login(userRole, id) {
-    localStorage.setItem(STORAGE_KEY, 'true')
-    localStorage.setItem(ROLE_KEY, userRole)
-    localStorage.setItem(USER_ID_KEY, String(id))
-    setIsAuthenticated(true)
-    setRole(userRole)
-    setUserId(id)
+  function login(newToken, user) {
+    localStorage.setItem(TOKEN_KEY, newToken)
+    localStorage.setItem(ROLE_KEY, user.role)
+    localStorage.setItem(USER_ID_KEY, String(user.id))
+    setToken(newToken)
+    setRole(user.role)
+    setUserId(user.id)
   }
 
-  function logout() {
-    localStorage.removeItem(STORAGE_KEY)
+  function clearSession() {
+    localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(ROLE_KEY)
     localStorage.removeItem(USER_ID_KEY)
-    setIsAuthenticated(false)
+    setToken(null)
     setRole(null)
     setUserId(null)
   }
 
+  async function logout() {
+    try {
+      await apiClient.post('/logout')
+    } catch {
+      // ponytail: token may already be invalid — clear local session regardless
+    }
+    clearSession()
+  }
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, role, userId, login, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ isAuthenticated: !!token, role, userId, login, logout }}>
+      {children}
+    </AuthContext.Provider>
   )
 }
 

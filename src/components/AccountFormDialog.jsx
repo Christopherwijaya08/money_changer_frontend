@@ -41,12 +41,10 @@ export default function AccountFormDialog({ open, onClose, onSave, account = nul
   }, [open, account, reset])
 
   function onSubmit(data) {
-    const { password, ...rest } = data
     onSave({
       id: account?.id ?? Date.now(),
       isActive: account?.isActive ?? true,
-      ...rest,
-      // ponytail: password just discarded (mock, no real accounts) — kept only to validate the field
+      ...data,
     })
     onClose()
   }

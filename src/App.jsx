@@ -24,35 +24,37 @@ function AppLayout() {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
 
+  // BranchProvider lives here (not around the whole app) so it only ever
+  // fetches /branches once a token exists — the /login route never mounts it.
   return (
-    <AppShell>
-      <Outlet />
-    </AppShell>
+    <BranchProvider>
+      <AppShell>
+        <Outlet />
+      </AppShell>
+    </BranchProvider>
   )
 }
 
 function App() {
   return (
     <AuthProvider>
-      <BranchProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<TransactionPage />} />
-            <Route path="/currencies" element={<CurrencyPage />} />
-            <Route path="/exchange-rates" element={<ExchangeRatePage />} />
-            <Route path="/customers" element={<CustomerPage />} />
-            <Route path="/customers/threshold" element={<ThresholdSettingsPage />} />
-            <Route path="/employees" element={<EmployeePage />} />
-            <Route path="/branches" element={<BranchPage />} />
-            <Route path="/cash" element={<CashPage />} />
-            <Route path="/reports" element={<ReportPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/access" element={<AccessPage />} />
-            <Route path="/change-password" element={<ChangePasswordPage />} />
-          </Route>
-        </Routes>
-      </BranchProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<TransactionPage />} />
+          <Route path="/currencies" element={<CurrencyPage />} />
+          <Route path="/exchange-rates" element={<ExchangeRatePage />} />
+          <Route path="/customers" element={<CustomerPage />} />
+          <Route path="/customers/threshold" element={<ThresholdSettingsPage />} />
+          <Route path="/employees" element={<EmployeePage />} />
+          <Route path="/branches" element={<BranchPage />} />
+          <Route path="/cash" element={<CashPage />} />
+          <Route path="/reports" element={<ReportPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/access" element={<AccessPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
+        </Route>
+      </Routes>
     </AuthProvider>
   )
 }

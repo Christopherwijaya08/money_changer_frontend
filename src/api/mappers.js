@@ -1,4 +1,3 @@
-import { API_BASE_URL } from './apiClient'
 import { formatDateTime } from '../utils/formatDateTime'
 
 export function mapCustomer(c) {
@@ -8,7 +7,17 @@ export function mapCustomer(c) {
     identityNumber: c.identity_number,
     phone: c.phone,
     address: c.address,
-    idPhotoUrl: c.has_ktp_photo ? `${API_BASE_URL}/customers/${c.id}/ktp-photo` : null,
+    hasKtpPhoto: c.has_ktp_photo,
+  }
+}
+
+export function mapAccount(u) {
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    isActive: u.is_active,
   }
 }
 

@@ -16,7 +16,7 @@ import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import FileDownloadIcon from '@mui/icons-material/FileDownload'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
-import { apiClient, API_BASE_URL } from '../api/apiClient'
+import { apiClient } from '../api/apiClient'
 import { useBranch } from '../context/BranchContext'
 import { formatDateTime } from '../utils/formatDateTime'
 
@@ -26,13 +26,34 @@ function formatNumber(value) {
   return Number(value).toLocaleString('id-ID')
 }
 
-function ExportButtons({ csvUrl, pdfUrl }) {
+// The export endpoints require a Bearer token now, so a plain <a href> or
+// window.open can't authenticate — fetched as a blob and saved via a
+// throwaway <a download> instead.
+async function downloadReport(path, params, filename) {
+  const blob = await apiClient.download(path, params)
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+function ExportButtons({ path, params, filenameBase }) {
   return (
     <div className="flex gap-2">
-      <Button size="small" startIcon={<FileDownloadIcon />} onClick={() => window.open(csvUrl)}>
+      <Button
+        size="small"
+        startIcon={<FileDownloadIcon />}
+        onClick={() => downloadReport(path, params, `${filenameBase}.csv`)}
+      >
         Export Excel
       </Button>
-      <Button size="small" startIcon={<PictureAsPdfIcon />} onClick={() => window.open(pdfUrl)}>
+      <Button
+        size="small"
+        startIcon={<PictureAsPdfIcon />}
+        onClick={() => downloadReport(path, { ...params, format: 'pdf' }, `${filenameBase}.pdf`)}
+      >
         Export PDF
       </Button>
     </div>
@@ -94,12 +115,12 @@ function ProfitLossTab() {
     setCurrencyId('')
   }
 
-  const exportParams = new URLSearchParams({
+  const exportParams = {
     branch_id: selectedBranchId,
     date_from: dateFrom,
     date_to: dateTo,
-    ...(currencyId ? { currency_id: currencyId } : {}),
-  })
+    currency_id: currencyId || undefined,
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -148,10 +169,7 @@ function ProfitLossTab() {
           </TextField>
           <Button onClick={resetFilters}>Reset Filter</Button>
         </div>
-        <ExportButtons
-          csvUrl={`${API_BASE_URL}/reports/profit-loss/export?${exportParams}`}
-          pdfUrl={`${API_BASE_URL}/reports/profit-loss/export?format=pdf&${exportParams}`}
-        />
+        <ExportButtons path="/reports/profit-loss/export" params={exportParams} filenameBase="laporan-laba-rugi" />
       </div>
 
       <TableContainer>
@@ -262,8 +280,6 @@ function EmployeeReportTab() {
     }
   }
 
-  const exportParams = new URLSearchParams({ branch_id: selectedBranchId })
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-4 items-center justify-between">
@@ -271,8 +287,9 @@ function EmployeeReportTab() {
           Menampilkan laporan per karyawan untuk cabang: {branchName}
         </Typography>
         <ExportButtons
-          csvUrl={`${API_BASE_URL}/reports/employee-performance/export?${exportParams}`}
-          pdfUrl={`${API_BASE_URL}/reports/employee-performance/export?format=pdf&${exportParams}`}
+          path="/reports/employee-performance/export"
+          params={{ branch_id: selectedBranchId }}
+          filenameBase="laporan-per-karyawan"
         />
       </div>
       {pageError && (

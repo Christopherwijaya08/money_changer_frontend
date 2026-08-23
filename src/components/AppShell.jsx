@@ -86,9 +86,9 @@ function UserMenu() {
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState(null)
 
-  function handleLogout() {
+  async function handleLogout() {
     setAnchorEl(null)
-    logout()
+    await logout()
     navigate('/login', { replace: true })
   }
 

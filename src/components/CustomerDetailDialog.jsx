@@ -89,7 +89,7 @@ export default function CustomerDetailDialog({ open, onClose, customer }) {
       <DialogTitle>Detail Nasabah</DialogTitle>
       <DialogContent>
         <div className="flex gap-4 mb-4">
-          <KtpPhotoAvatar src={customer.idPhotoUrl} sx={{ width: 120, height: 90 }} />
+          <KtpPhotoAvatar customerId={customer.id} hasPhoto={customer.hasKtpPhoto} sx={{ width: 120, height: 90 }} />
           <div className="flex flex-col gap-0.5">
             <Typography variant="h6">{customer.name}</Typography>
             <Typography variant="body2" color="text.secondary">

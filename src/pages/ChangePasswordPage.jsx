@@ -8,6 +8,7 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
+import { apiClient } from '../api/apiClient'
 
 const schema = yup.object({
   currentPassword: yup.string().required('Wajib diisi'),
@@ -24,16 +25,26 @@ export default function ChangePasswordPage() {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    setError,
+    formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
     resolver: yupResolver(schema),
   })
 
-  function onSubmit() {
-    // ponytail: no real credential store yet (Fase 5 backend); just confirms the flow works
-    setSaved(true)
-    reset()
+  async function onSubmit(data) {
+    try {
+      await apiClient.put('/change-password', {
+        current_password: data.currentPassword,
+        new_password: data.newPassword,
+      })
+      setSaved(true)
+      reset()
+    } catch (err) {
+      setError('currentPassword', {
+        message: err.errors?.current_password?.[0] ?? err.message ?? 'Gagal mengubah kata sandi',
+      })
+    }
   }
 
   return (
@@ -85,7 +96,7 @@ export default function ChangePasswordPage() {
               />
             </Grid>
             <Grid size={12} className="flex justify-end">
-              <Button type="submit" variant="contained">
+              <Button type="submit" variant="contained" disabled={isSubmitting}>
                 Simpan
               </Button>
             </Grid>

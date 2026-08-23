@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
@@ -16,20 +16,36 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogActions from '@mui/material/DialogActions'
+import Alert from '@mui/material/Alert'
 import PersonAddIcon from '@mui/icons-material/PersonAdd'
 import EditIcon from '@mui/icons-material/Edit'
 import BlockIcon from '@mui/icons-material/Block'
-import { adminUsers as initialAdminUsers } from '../mocks/data'
+import { apiClient } from '../api/apiClient'
+import { mapAccount } from '../api/mappers'
 import { useAuth } from '../context/AuthContext'
 import AccountFormDialog from '../components/AccountFormDialog'
 import StatusChip from '../components/StatusChip'
 
 export default function AccessPage() {
   const { role } = useAuth()
-  const [accounts, setAccounts] = useState(initialAdminUsers)
+  const [accounts, setAccounts] = useState([])
+  const [pageError, setPageError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState(null)
   const [deactivatingAccount, setDeactivatingAccount] = useState(null)
+
+  async function loadAccounts() {
+    try {
+      const res = await apiClient.get('/admin/users')
+      setAccounts(res.data.map(mapAccount))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal memuat data akun')
+    }
+  }
+
+  useEffect(() => {
+    if (role === 'owner') loadAccounts()
+  }, [role])
 
   if (role !== 'owner') {
     return <Navigate to="/" replace />
@@ -45,18 +61,43 @@ export default function AccessPage() {
     setDialogOpen(true)
   }
 
-  function handleSave(saved) {
-    setAccounts((list) => {
-      const exists = list.some((a) => a.id === saved.id)
-      return exists ? list.map((a) => (a.id === saved.id ? saved : a)) : [saved, ...list]
-    })
+  async function handleSave(formData) {
+    const isEditing = !!editingAccount
+    const fields = {
+      name: formData.name,
+      email: formData.email,
+      role: formData.role,
+      ...(formData.password ? { password: formData.password } : {}),
+    }
+
+    try {
+      setPageError('')
+      const response = isEditing
+        ? await apiClient.put(`/admin/users/${editingAccount.id}`, fields)
+        : await apiClient.post('/admin/users', fields)
+      const saved = mapAccount(response.data)
+      setAccounts((list) => (isEditing ? list.map((a) => (a.id === saved.id ? saved : a)) : [saved, ...list]))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menyimpan akun')
+    }
   }
 
-  function confirmDeactivate() {
-    setAccounts((list) =>
-      list.map((a) => (a.id === deactivatingAccount.id ? { ...a, isActive: false } : a))
-    )
-    setDeactivatingAccount(null)
+  async function confirmDeactivate() {
+    try {
+      setPageError('')
+      const response = await apiClient.put(`/admin/users/${deactivatingAccount.id}`, {
+        name: deactivatingAccount.name,
+        email: deactivatingAccount.email,
+        role: deactivatingAccount.role,
+        is_active: false,
+      })
+      const saved = mapAccount(response.data)
+      setAccounts((list) => list.map((a) => (a.id === saved.id ? saved : a)))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menonaktifkan akun')
+    } finally {
+      setDeactivatingAccount(null)
+    }
   }
 
   return (
@@ -69,6 +110,12 @@ export default function AccessPage() {
           Tambah Akun
         </Button>
       </div>
+
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
 
       <Paper className="p-6">
         <TableContainer>

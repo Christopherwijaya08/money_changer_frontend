@@ -8,15 +8,8 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import { apiClient } from '../api/apiClient'
 import { useAuth } from '../context/AuthContext'
-
-// ponytail: hardcoded until the real login API (Fase 5 backend) lands. userId
-// mirrors UserSeeder's rows (assumes a fresh migrate:fresh --seed) so features
-// that need a real user_id foreign key have one to send.
-const MOCK_ACCOUNTS = [
-  { email: 'admin@moneychanger.test', password: 'admin123', role: 'admin', userId: 2 },
-  { email: 'owner@moneychanger.test', password: 'owner123', role: 'owner', userId: 3 },
-]
 
 const schema = yup.object({
   email: yup.string().email('Format email tidak valid').required('Email wajib diisi'),
@@ -30,7 +23,7 @@ export default function LoginPage() {
     register,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm({ defaultValues: { email: '', password: '' }, resolver: yupResolver(schema) })
 
   // Single redirect point: covers both "just logged in" (login() flips this
@@ -39,13 +32,13 @@ export default function LoginPage() {
     return <Navigate to={location.state?.from ?? '/'} replace />
   }
 
-  function onSubmit(data) {
-    const account = MOCK_ACCOUNTS.find((a) => a.email === data.email && a.password === data.password)
-    if (account) {
-      login(account.role, account.userId)
-      return
+  async function onSubmit(data) {
+    try {
+      const res = await apiClient.post('/login', data)
+      login(res.token, res.user)
+    } catch (err) {
+      setError('root', { message: err.errors?.email?.[0] ?? err.message ?? 'Email atau kata sandi salah.' })
     }
-    setError('root', { message: 'Email atau kata sandi salah.' })
   }
 
   return (
@@ -87,7 +80,7 @@ export default function LoginPage() {
             helperText={errors.password?.message}
             {...register('password')}
           />
-          <Button type="submit" variant="contained" size="large">
+          <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
             Masuk
           </Button>
         </form>
