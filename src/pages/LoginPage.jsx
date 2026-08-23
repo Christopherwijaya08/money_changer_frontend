@@ -10,10 +10,12 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import { useAuth } from '../context/AuthContext'
 
-// ponytail: hardcoded until the real login API (Fase 5 backend) lands
+// ponytail: hardcoded until the real login API (Fase 5 backend) lands. userId
+// mirrors UserSeeder's rows (assumes a fresh migrate:fresh --seed) so features
+// that need a real user_id foreign key have one to send.
 const MOCK_ACCOUNTS = [
-  { email: 'admin@moneychanger.test', password: 'admin123', role: 'admin' },
-  { email: 'owner@moneychanger.test', password: 'owner123', role: 'owner' },
+  { email: 'admin@moneychanger.test', password: 'admin123', role: 'admin', userId: 2 },
+  { email: 'owner@moneychanger.test', password: 'owner123', role: 'owner', userId: 3 },
 ]
 
 const schema = yup.object({
@@ -40,7 +42,7 @@ export default function LoginPage() {
   function onSubmit(data) {
     const account = MOCK_ACCOUNTS.find((a) => a.email === data.email && a.password === data.password)
     if (account) {
-      login(account.role)
+      login(account.role, account.userId)
       return
     }
     setError('root', { message: 'Email atau kata sandi salah.' })

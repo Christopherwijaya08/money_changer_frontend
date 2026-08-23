@@ -39,6 +39,7 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
     formState: { errors },
   } = useForm({ defaultValues: emptyForm, resolver: yupResolver(customerSchema) })
   const [idPreview, setIdPreview] = useState(null)
+  const [idFile, setIdFile] = useState(null)
 
   const isEditing = !!customer
 
@@ -55,6 +56,7 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
         : emptyForm
     )
     setIdPreview(customer?.idPhotoUrl ?? null)
+    setIdFile(null)
   }, [open, customer, reset])
 
   function handleClose() {
@@ -62,7 +64,7 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
   }
 
   function onSubmit(data) {
-    onAdd({ id: customer?.id ?? Date.now(), ...data, idPhotoUrl: idPreview })
+    onAdd({ id: customer?.id ?? Date.now(), ...data, idPhotoUrl: idPreview, idPhotoFile: idFile })
     handleClose()
   }
 
@@ -103,7 +105,7 @@ export default function CustomerQuickAddDialog({ open, onClose, onAdd, customer 
               <TextField fullWidth label="Alamat" multiline minRows={2} {...register('address')} />
             </Grid>
             <Grid size={12}>
-              <IdPhotoUpload value={idPreview} onChange={setIdPreview} />
+              <IdPhotoUpload value={idPreview} onChange={setIdPreview} onFileChange={setIdFile} />
             </Grid>
           </Grid>
         </DialogContent>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
@@ -23,33 +23,76 @@ import Alert from '@mui/material/Alert'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import PrintIcon from '@mui/icons-material/Print'
-import { currencies, customers as initialCustomers, employees, transactions as initialTransactions } from '../mocks/data'
+import { api } from '../api/client'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerSearchField from '../components/CustomerSearchField'
 import ReceiptDialog from '../components/ReceiptDialog'
 import { useBranch } from '../context/BranchContext'
+import { useAuth } from '../context/AuthContext'
 import { useThousandSeparator } from '../hooks/useThousandSeparator'
-
-const REVIEW_THRESHOLD = 50000000
-
-const activeEmployees = employees.filter((e) => e.isActive)
 
 function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
 }
 
-const defaultFormValues = {
+function formatDateTime(iso) {
+  return iso ? iso.slice(0, 16).replace('T', ' ') : ''
+}
+
+function mapCurrency(currency, rateByCurrencyId) {
+  const rate = rateByCurrencyId[currency.id]
+  return {
+    id: currency.id,
+    code: currency.code,
+    isActive: currency.is_active,
+    rateBuy: Number(rate?.rate_buy ?? 0),
+    rateSell: Number(rate?.rate_sell ?? 0),
+  }
+}
+
+function mapEmployee(e) {
+  return { id: e.id, name: e.name, position: e.position }
+}
+
+function mapCustomer(c) {
+  return {
+    id: c.id,
+    name: c.name,
+    identityNumber: c.identity_number,
+    phone: c.phone,
+    address: c.address,
+    hasKtpPhoto: c.has_ktp_photo,
+  }
+}
+
+function mapTransaction(t) {
+  return {
+    id: t.id,
+    transactionNumber: t.transaction_number,
+    type: t.type,
+    currencyCode: t.currency_code,
+    amount: Number(t.amount),
+    rateActual: Number(t.rate_actual),
+    totalAmount: Number(t.total_amount),
+    customerName: t.customer_name,
+    employeeName: t.employee_name,
+    requiresReview: t.requires_review,
+    createdAt: formatDateTime(t.created_at),
+  }
+}
+
+const emptyFormValues = {
   type: 'buy',
-  currencyId: currencies[0].id,
+  currencyId: '',
   amount: '',
-  rateActual: currencies[0].rateBuy,
+  rateActual: '',
   customer: null,
   employeeId: '',
 }
 
 const transactionSchema = yup.object({
   type: yup.string().required(),
-  currencyId: yup.number().required(),
+  currencyId: yup.number().required('Pilih mata uang'),
   amount: yup
     .number()
     .typeError('Nominal harus lebih dari 0')
@@ -76,13 +119,23 @@ export default function TransactionPage() {
     getValues,
     reset,
     formState: { errors },
-  } = useForm({ defaultValues: defaultFormValues, resolver: yupResolver(transactionSchema) })
+  } = useForm({ defaultValues: emptyFormValues, resolver: yupResolver(transactionSchema) })
 
   const { branches, selectedBranchId } = useBranch()
+  const { userId } = useAuth()
   const selectedBranchName = branches.find((b) => b.id === selectedBranchId)?.name
 
-  const [customerList, setCustomerList] = useState(initialCustomers)
-  const [transactions, setTransactions] = useState(initialTransactions)
+  const [currencies, setCurrencies] = useState([])
+  const [employees, setEmployees] = useState([])
+  const [customerList, setCustomerList] = useState([])
+  const [reviewThreshold, setReviewThreshold] = useState(50000000)
+  const [referenceLoading, setReferenceLoading] = useState(true)
+  const [referenceError, setReferenceError] = useState('')
+
+  const [transactions, setTransactions] = useState([])
+  const [totalTransactions, setTotalTransactions] = useState(0)
+
+  const [submitError, setSubmitError] = useState('')
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [receiptTransaction, setReceiptTransaction] = useState(null)
   const [receiptOpen, setReceiptOpen] = useState(false)
@@ -104,6 +157,78 @@ export default function TransactionPage() {
     setPage(0)
   }
 
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadReferenceData() {
+      try {
+        const [currenciesRes, ratesRes, employeesRes, customersRes, thresholdRes] = await Promise.all([
+          api.get('/currencies'),
+          api.get('/exchange-rates'),
+          api.get('/employees'),
+          api.get('/customers'),
+          api.get('/settings/threshold'),
+        ])
+        if (cancelled) return
+
+        const rateByCurrencyId = Object.fromEntries(ratesRes.data.map((r) => [r.currency_id, r]))
+        const loadedCurrencies = currenciesRes.data.map((c) => mapCurrency(c, rateByCurrencyId))
+        const firstActive = loadedCurrencies.find((c) => c.isActive)
+
+        setCurrencies(loadedCurrencies)
+        setEmployees(employeesRes.data.map(mapEmployee))
+        setCustomerList(customersRes.data.map(mapCustomer))
+        setReviewThreshold(Number(thresholdRes.data.review_threshold))
+
+        if (firstActive) {
+          reset({
+            ...emptyFormValues,
+            currencyId: firstActive.id,
+            rateActual: firstActive.rateBuy,
+          })
+        }
+      } catch (err) {
+        if (!cancelled) setReferenceError(err.message ?? 'Gagal memuat data referensi')
+      } finally {
+        if (!cancelled) setReferenceLoading(false)
+      }
+    }
+
+    loadReferenceData()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function fetchTransactions() {
+    try {
+      const res = await api.get('/transactions', {
+        branch_id: selectedBranchId,
+        employee_id: filterEmployee || undefined,
+        currency_id: filterCurrency || undefined,
+        customer_id: filterCustomer || undefined,
+        date: filterDate || undefined,
+        requires_review: filterReviewOnly ? 1 : undefined,
+        page: page + 1,
+        per_page: rowsPerPage,
+      })
+      setTransactions(res.data.map(mapTransaction))
+      setTotalTransactions(res.meta.total)
+    } catch (err) {
+      setSubmitError(err.message ?? 'Gagal memuat riwayat transaksi')
+    }
+  }
+
+  useEffect(() => {
+    fetchTransactions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBranchId, filterEmployee, filterCurrency, filterCustomer, filterDate, filterReviewOnly, page, rowsPerPage])
+
+  useEffect(() => {
+    setPage(0)
+  }, [selectedBranchId, filterEmployee, filterCurrency, filterCustomer, filterDate, filterReviewOnly])
+
   const type = watch('type')
   const currencyId = watch('currencyId')
   const amount = watch('amount')
@@ -123,56 +248,57 @@ export default function TransactionPage() {
     setValue('rateActual', value === 'buy' ? c.rateBuy : c.rateSell)
   }
 
-  function handleCustomerAdded(newCustomer) {
-    setCustomerList((list) => [...list, newCustomer])
-    setValue('customer', newCustomer)
-  }
-
-  function onSubmit(data) {
-    const employee = employees.find((e) => e.id === data.employeeId)
-    const now = new Date()
-    const totalAmount = Number(data.amount) * Number(data.rateActual)
-    const newTransaction = {
-      id: Date.now(),
-      transactionNumber: `TRX-${now.toISOString().slice(0, 10).replace(/-/g, '')}-${String(transactions.length + 1).padStart(3, '0')}`,
-      type: data.type,
-      currencyCode: selectedCurrency.code,
-      amount: Number(data.amount),
-      rateActual: Number(data.rateActual),
-      totalAmount,
-      customerName: data.customer.name,
-      employeeName: employee.name,
-      requiresReview: totalAmount > REVIEW_THRESHOLD,
-      createdAt: now.toISOString().slice(0, 16).replace('T', ' '),
-      branchId: selectedBranchId,
+  async function handleCustomerAdded(newCustomer) {
+    const fields = {
+      name: newCustomer.name,
+      identity_number: newCustomer.identityNumber,
+      phone: newCustomer.phone,
+      address: newCustomer.address || '',
     }
 
-    setTransactions((list) => [newTransaction, ...list])
-    setReceiptTransaction(newTransaction)
-    setReceiptOpen(true)
-    reset({ ...data, amount: '', customer: null, employeeId: '' })
+    let body
+    if (newCustomer.idPhotoFile) {
+      body = new FormData()
+      Object.entries(fields).forEach(([key, value]) => body.append(key, value))
+      body.append('ktp_photo', newCustomer.idPhotoFile)
+    } else {
+      body = fields
+    }
+
+    try {
+      setSubmitError('')
+      const res = await api.post('/customers', body)
+      const created = mapCustomer(res.data)
+      setCustomerList((list) => [created, ...list])
+      setValue('customer', created)
+    } catch (err) {
+      setSubmitError(err.message ?? 'Gagal menyimpan nasabah baru')
+    }
   }
 
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
-      if (t.branchId !== selectedBranchId) return false
-      if (filterEmployee && t.employeeName !== filterEmployee) return false
-      if (filterCurrency && t.currencyCode !== filterCurrency) return false
-      if (filterCustomer && t.customerName !== filterCustomer) return false
-      if (filterDate && !t.createdAt.startsWith(filterDate)) return false
-      if (filterReviewOnly && !t.requiresReview) return false
-      return true
-    })
-  }, [transactions, selectedBranchId, filterEmployee, filterCurrency, filterCustomer, filterDate, filterReviewOnly])
-
-  useEffect(() => {
-    setPage(0)
-  }, [selectedBranchId, filterEmployee, filterCurrency, filterCustomer, filterDate, filterReviewOnly])
-
-  const paginatedTransactions = filteredTransactions.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage,
-  )
+  async function onSubmit(data) {
+    try {
+      setSubmitError('')
+      const res = await api.post('/transactions', {
+        branch_id: selectedBranchId,
+        type: data.type,
+        currency_id: data.currencyId,
+        amount: Number(data.amount),
+        rate_default: rateDefault,
+        rate_actual: Number(data.rateActual),
+        customer_id: data.customer.id,
+        employee_id: data.employeeId,
+        user_id: userId,
+      })
+      const created = mapTransaction(res.data)
+      setReceiptTransaction(created)
+      setReceiptOpen(true)
+      reset({ ...data, amount: '', customer: null, employeeId: '' })
+      fetchTransactions()
+    } catch (err) {
+      setSubmitError(err.message ?? 'Gagal menyimpan transaksi')
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -180,188 +306,198 @@ export default function TransactionPage() {
         Transaksi Penukaran
       </Typography>
 
+      {(referenceError || submitError) && (
+        <Alert severity="error" onClose={() => (referenceError ? setReferenceError('') : setSubmitError(''))}>
+          {referenceError || submitError}
+        </Alert>
+      )}
+
       <Paper className="p-6">
         <Typography variant="h6" className="mb-4">
           Transaksi Baru
         </Typography>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <Grid container spacing={8}>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <Controller
-                name="type"
-                control={control}
-                render={({ field }) => (
-                  <ToggleButtonGroup
-                    color="primary"
-                    exclusive
-                    fullWidth
-                    value={field.value}
-                    onChange={(_, value) => {
-                      if (!value) return
-                      field.onChange(value)
-                      handleTypeChange(value)
-                    }}
-                  >
-                    <ToggleButton value="buy">Beli dari Customer</ToggleButton>
-                    <ToggleButton value="sell">Jual ke Customer</ToggleButton>
-                  </ToggleButtonGroup>
-                )}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <Controller
-                name="currencyId"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label="Mata Uang"
-                    {...field}
-                    onChange={(e) => {
-                      const id = Number(e.target.value)
-                      field.onChange(id)
-                      handleCurrencyChange(id)
-                    }}
-                  >
-                    {currencies
-                      .filter((c) => c.isActive)
-                      .map((c) => (
-                        <MenuItem key={c.id} value={c.id}>
-                          {c.code}
+        {referenceLoading ? (
+          <Typography color="text.secondary">Memuat data transaksi...</Typography>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <Grid container spacing={8}>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Controller
+                  name="type"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleButtonGroup
+                      color="primary"
+                      exclusive
+                      fullWidth
+                      value={field.value}
+                      onChange={(_, value) => {
+                        if (!value) return
+                        field.onChange(value)
+                        handleTypeChange(value)
+                      }}
+                    >
+                      <ToggleButton value="buy">Beli dari Customer</ToggleButton>
+                      <ToggleButton value="sell">Jual ke Customer</ToggleButton>
+                    </ToggleButtonGroup>
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Controller
+                  name="currencyId"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      select
+                      fullWidth
+                      label="Mata Uang"
+                      {...field}
+                      onChange={(e) => {
+                        const id = Number(e.target.value)
+                        field.onChange(id)
+                        handleCurrencyChange(id)
+                      }}
+                    >
+                      {currencies
+                        .filter((c) => c.isActive)
+                        .map((c) => (
+                          <MenuItem key={c.id} value={c.id}>
+                            {c.code}
+                          </MenuItem>
+                        ))}
+                    </TextField>
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Controller
+                  name="amount"
+                  control={control}
+                  render={({ field }) => {
+                    const [display, handleChange] = useThousandSeparator(field.value, field.onChange)
+                    return (
+                      <TextField
+                        fullWidth
+                        inputMode="numeric"
+                        label="Nominal"
+                        error={!!errors.amount}
+                        helperText={errors.amount?.message}
+                        value={display}
+                        onChange={handleChange}
+                        slotProps={{
+                          input: {
+                            endAdornment: selectedCurrency && (
+                              <InputAdornment position="end">{selectedCurrency.code}</InputAdornment>
+                            ),
+                          },
+                        }}
+                      />
+                    )
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Kurs Default"
+                  value={rateDefault ? rateDefault.toLocaleString('id-ID') : ''}
+                  disabled
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Controller
+                  name="rateActual"
+                  control={control}
+                  render={({ field }) => {
+                    const [display, handleChange] = useThousandSeparator(field.value, field.onChange)
+                    return (
+                      <TextField
+                        fullWidth
+                        inputMode="numeric"
+                        label="Kurs Aktual (Nego)"
+                        error={!!errors.rateActual}
+                        helperText={errors.rateActual?.message}
+                        value={display}
+                        onChange={handleChange}
+                      />
+                    )
+                  }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField fullWidth label="Total" value={formatRupiah(total)} disabled />
+              </Grid>
+
+              {total > reviewThreshold && (
+                <Grid size={12}>
+                  <Alert severity="warning">
+                    Transaksi ini melebihi batas Rp {reviewThreshold.toLocaleString('id-ID')} dan akan otomatis
+                    ditandai "Perlu Review".
+                  </Alert>
+                </Grid>
+              )}
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Controller
+                  name="customer"
+                  control={control}
+                  render={({ field }) => (
+                    <CustomerSearchField
+                      options={customerList}
+                      value={field.value}
+                      onChange={field.onChange}
+                      error={!!errors.customer}
+                      helperText={errors.customer?.message}
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 3 }}>
+                <Button variant="outlined" fullWidth sx={{ height: '100%' }} onClick={() => setQuickAddOpen(true)}>
+                  + Nasabah Baru
+                </Button>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 3 }}>
+                <Controller
+                  name="employeeId"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      select
+                      fullWidth
+                      label="Dilayani oleh"
+                      error={!!errors.employeeId}
+                      helperText={errors.employeeId?.message}
+                      {...field}
+                    >
+                      {employees.map((e) => (
+                        <MenuItem key={e.id} value={e.id}>
+                          {e.name} — {e.position}
                         </MenuItem>
                       ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <Controller
-                name="amount"
-                control={control}
-                render={({ field }) => {
-                  const [display, handleChange] = useThousandSeparator(field.value, field.onChange)
-                  return (
-                    <TextField
-                      fullWidth
-                      inputMode="numeric"
-                      label="Nominal"
-                      error={!!errors.amount}
-                      helperText={errors.amount?.message}
-                      value={display}
-                      onChange={handleChange}
-                      slotProps={{
-                        input: {
-                          endAdornment: selectedCurrency && (
-                            <InputAdornment position="end">{selectedCurrency.code}</InputAdornment>
-                          ),
-                        },
-                      }}
-                    />
-                  )
-                }}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                fullWidth
-                label="Kurs Default"
-                value={rateDefault ? rateDefault.toLocaleString('id-ID') : ''}
-                disabled
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <Controller
-                name="rateActual"
-                control={control}
-                render={({ field }) => {
-                  const [display, handleChange] = useThousandSeparator(field.value, field.onChange)
-                  return (
-                    <TextField
-                      fullWidth
-                      inputMode="numeric"
-                      label="Kurs Aktual (Nego)"
-                      error={!!errors.rateActual}
-                      helperText={errors.rateActual?.message}
-                      value={display}
-                      onChange={handleChange}
-                    />
-                  )
-                }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField fullWidth label="Total" value={formatRupiah(total)} disabled />
-            </Grid>
-
-            {total > REVIEW_THRESHOLD && (
-              <Grid size={12}>
-                <Alert severity="warning">
-                  Transaksi ini melebihi batas Rp {REVIEW_THRESHOLD.toLocaleString('id-ID')} dan akan otomatis
-                  ditandai "Perlu Review".
-                </Alert>
+                    </TextField>
+                  )}
+                />
               </Grid>
-            )}
 
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <Controller
-                name="customer"
-                control={control}
-                render={({ field }) => (
-                  <CustomerSearchField
-                    options={customerList}
-                    value={field.value}
-                    onChange={field.onChange}
-                    error={!!errors.customer}
-                    helperText={errors.customer?.message}
-                  />
-                )}
-              />
+              <Grid size={12} className="flex justify-end gap-2">
+                <Button
+                  variant="outlined"
+                  startIcon={<PrintIcon />}
+                  disabled={!receiptTransaction}
+                  onClick={() => setReceiptOpen(true)}
+                >
+                  Cetak Nota
+                </Button>
+                <Button type="submit" variant="contained">
+                  Simpan
+                </Button>
+              </Grid>
             </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
-              <Button variant="outlined" fullWidth sx={{ height: '100%' }} onClick={() => setQuickAddOpen(true)}>
-                + Nasabah Baru
-              </Button>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
-              <Controller
-                name="employeeId"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label="Dilayani oleh"
-                    error={!!errors.employeeId}
-                    helperText={errors.employeeId?.message}
-                    {...field}
-                  >
-                    {activeEmployees.map((e) => (
-                      <MenuItem key={e.id} value={e.id}>
-                        {e.name} — {e.position}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-
-            <Grid size={12} className="flex justify-end gap-2">
-              <Button
-                variant="outlined"
-                startIcon={<PrintIcon />}
-                disabled={!receiptTransaction}
-                onClick={() => setReceiptOpen(true)}
-              >
-                Cetak Nota
-              </Button>
-              <Button type="submit" variant="contained">
-                Simpan
-              </Button>
-            </Grid>
-          </Grid>
-        </form>
+          </form>
+        )}
       </Paper>
 
       <Paper className="p-6">
@@ -385,7 +521,7 @@ export default function TransactionPage() {
             >
               <MenuItem value="">Semua</MenuItem>
               {employees.map((e) => (
-                <MenuItem key={e.id} value={e.name}>
+                <MenuItem key={e.id} value={e.id}>
                   {e.name}
                 </MenuItem>
               ))}
@@ -402,7 +538,7 @@ export default function TransactionPage() {
             >
               <MenuItem value="">Semua</MenuItem>
               {currencies.map((c) => (
-                <MenuItem key={c.id} value={c.code}>
+                <MenuItem key={c.id} value={c.id}>
                   {c.code}
                 </MenuItem>
               ))}
@@ -430,7 +566,7 @@ export default function TransactionPage() {
             >
               <MenuItem value="">Semua</MenuItem>
               {customerList.map((c) => (
-                <MenuItem key={c.id} value={c.name}>
+                <MenuItem key={c.id} value={c.id}>
                   {c.name}
                 </MenuItem>
               ))}
@@ -470,7 +606,7 @@ export default function TransactionPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedTransactions.map((t) => (
+              {transactions.map((t) => (
                 <TableRow key={t.id} hover>
                   <TableCell>{t.transactionNumber}</TableCell>
                   <TableCell>{t.createdAt}</TableCell>
@@ -492,7 +628,7 @@ export default function TransactionPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredTransactions.length === 0 && (
+              {transactions.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={10} align="center">
                     Tidak ada transaksi yang cocok dengan filter.
@@ -504,7 +640,7 @@ export default function TransactionPage() {
         </TableContainer>
         <TablePagination
           component="div"
-          count={filteredTransactions.length}
+          count={totalTransactions}
           page={page}
           onPageChange={(_, newPage) => setPage(newPage)}
           rowsPerPage={rowsPerPage}

@@ -8,7 +8,7 @@ import CloseIcon from '@mui/icons-material/Close'
 
 const MAX_SIZE_BYTES = 4 * 1024 * 1024
 
-export default function IdPhotoUpload({ value, onChange, label = 'Upload Foto KTP' }) {
+export default function IdPhotoUpload({ value, onChange, onFileChange, label = 'Upload Foto KTP' }) {
   const [error, setError] = useState('')
 
   function handleFile(e) {
@@ -27,11 +27,13 @@ export default function IdPhotoUpload({ value, onChange, label = 'Upload Foto KT
 
     setError('')
     onChange(URL.createObjectURL(file))
+    onFileChange?.(file)
   }
 
   function handleClear() {
     setError('')
     onChange(null)
+    onFileChange?.(null)
   }
 
   return (
