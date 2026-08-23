@@ -33,6 +33,7 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import SpaceDashboardIcon from '@mui/icons-material/SpaceDashboard'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import HistoryIcon from '@mui/icons-material/History'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BranchSelector from './BranchSelector'
 import { useBranch } from '../context/BranchContext'
@@ -75,6 +76,13 @@ const menuGroups = [
         path: '/access',
         active: true,
         icon: AdminPanelSettingsIcon,
+        roles: ['owner'],
+      },
+      {
+        label: 'Audit Log',
+        path: '/audit-log',
+        active: true,
+        icon: HistoryIcon,
         roles: ['owner'],
       },
     ],
