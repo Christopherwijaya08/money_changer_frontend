@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
@@ -10,16 +10,32 @@ import TableBody from '@mui/material/TableBody'
 import TableRow from '@mui/material/TableRow'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
+import Alert from '@mui/material/Alert'
 import AddCircleIcon from '@mui/icons-material/AddCircle'
 import EditIcon from '@mui/icons-material/Edit'
-import { currencies as initialCurrencies } from '../mocks/data'
+import { apiClient } from '../api/apiClient'
+import { mapCurrency } from '../api/mappers'
 import CurrencyFormDialog from '../components/CurrencyFormDialog'
 import StatusChip from '../components/StatusChip'
 
 export default function CurrencyPage() {
-  const [currencies, setCurrencies] = useState(initialCurrencies)
+  const [currencies, setCurrencies] = useState([])
+  const [pageError, setPageError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingCurrency, setEditingCurrency] = useState(null)
+
+  async function loadCurrencies() {
+    try {
+      const res = await apiClient.get('/currencies')
+      setCurrencies(res.data.map(mapCurrency))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal memuat data mata uang')
+    }
+  }
+
+  useEffect(() => {
+    loadCurrencies()
+  }, [])
 
   function openAdd() {
     setEditingCurrency(null)
@@ -31,17 +47,34 @@ export default function CurrencyPage() {
     setDialogOpen(true)
   }
 
-  function handleSave(saved) {
-    setCurrencies((list) => {
-      const exists = list.some((c) => c.id === saved.id)
-      return exists ? list.map((c) => (c.id === saved.id ? saved : c)) : [saved, ...list]
-    })
+  async function handleSave(formData) {
+    const isEditing = !!editingCurrency
+
+    try {
+      setPageError('')
+      const response = isEditing
+        ? await apiClient.put(`/currencies/${editingCurrency.id}`, { code: formData.code, name: formData.name })
+        : await apiClient.post('/currencies', { code: formData.code, name: formData.name })
+      const saved = mapCurrency(response.data)
+      setCurrencies((list) => (isEditing ? list.map((c) => (c.id === saved.id ? saved : c)) : [saved, ...list]))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menyimpan mata uang')
+    }
   }
 
-  function handleToggleActive(currency) {
-    setCurrencies((list) =>
-      list.map((c) => (c.id === currency.id ? { ...c, isActive: !c.isActive } : c))
-    )
+  async function handleToggleActive(currency) {
+    try {
+      setPageError('')
+      const response = await apiClient.put(`/currencies/${currency.id}`, {
+        code: currency.code,
+        name: currency.name,
+        is_active: !currency.isActive,
+      })
+      const saved = mapCurrency(response.data)
+      setCurrencies((list) => list.map((c) => (c.id === saved.id ? saved : c)))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal mengubah status mata uang')
+    }
   }
 
   return (
@@ -54,6 +87,12 @@ export default function CurrencyPage() {
           Tambah Mata Uang
         </Button>
       </div>
+
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
 
       <Paper className="p-6">
         <TableContainer>

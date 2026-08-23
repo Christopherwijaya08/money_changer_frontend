@@ -12,6 +12,15 @@ export function mapCustomer(c) {
   }
 }
 
+export function mapCurrency(c) {
+  return {
+    id: c.id,
+    code: c.code,
+    name: c.name,
+    isActive: c.is_active,
+  }
+}
+
 export function mapBranch(b) {
   return {
     id: b.id,
