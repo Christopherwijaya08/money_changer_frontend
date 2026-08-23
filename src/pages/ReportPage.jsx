@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
 import Tabs from '@mui/material/Tabs'
@@ -13,29 +13,26 @@ import TableSortLabel from '@mui/material/TableSortLabel'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
+import Alert from '@mui/material/Alert'
 import FileDownloadIcon from '@mui/icons-material/FileDownload'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
-import { currencies, employees, transactions } from '../mocks/data'
+import { apiClient, API_BASE_URL } from '../api/apiClient'
 import { useBranch } from '../context/BranchContext'
-import { downloadCsv } from '../utils/exportCsv'
+import { formatDateTime } from '../utils/formatDateTime'
 
 const TABS = ['Laporan Laba-Rugi', 'Laporan per Karyawan']
 
 function formatNumber(value) {
-  return value.toLocaleString('id-ID')
+  return Number(value).toLocaleString('id-ID')
 }
 
-function computeMargin(t) {
-  return t.type === 'buy' ? (t.rateDefault - t.rateActual) * t.amount : (t.rateActual - t.rateDefault) * t.amount
-}
-
-function ExportButtons({ onExportExcel }) {
+function ExportButtons({ csvUrl, pdfUrl }) {
   return (
     <div className="flex gap-2">
-      <Button size="small" startIcon={<FileDownloadIcon />} onClick={onExportExcel}>
+      <Button size="small" startIcon={<FileDownloadIcon />} onClick={() => window.open(csvUrl)}>
         Export Excel
       </Button>
-      <Button size="small" startIcon={<PictureAsPdfIcon />} onClick={() => window.print()}>
+      <Button size="small" startIcon={<PictureAsPdfIcon />} onClick={() => window.open(pdfUrl)}>
         Export PDF
       </Button>
     </div>
@@ -47,48 +44,74 @@ function ProfitLossTab() {
   const branchName = branches.find((b) => b.id === selectedBranchId)?.name
   const [dateFrom, setDateFrom] = useState('2026-08-01')
   const [dateTo, setDateTo] = useState('2026-08-31')
-  const [currencyCode, setCurrencyCode] = useState('')
+  const [currencyId, setCurrencyId] = useState('')
+  const [currencies, setCurrencies] = useState([])
+  const [rows, setRows] = useState([])
+  const [totalMargin, setTotalMargin] = useState(0)
+  const [pageError, setPageError] = useState('')
 
-  const filtered = transactions
-    .filter((t) => t.branchId === selectedBranchId)
-    .filter((t) => !currencyCode || t.currencyCode === currencyCode)
-    .filter((t) => {
-      const date = t.createdAt.slice(0, 10)
-      return date >= dateFrom && date <= dateTo
-    })
-    .map((t) => ({ ...t, margin: computeMargin(t) }))
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  useEffect(() => {
+    async function loadCurrencies() {
+      try {
+        const res = await apiClient.get('/currencies')
+        setCurrencies(res.data)
+      } catch (err) {
+        setPageError(err.message ?? 'Gagal memuat data mata uang')
+      }
+    }
+    loadCurrencies()
+  }, [])
 
-  const totalMargin = filtered.reduce((sum, t) => sum + t.margin, 0)
+  useEffect(() => {
+    if (!selectedBranchId) return
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await apiClient.get('/reports/profit-loss', {
+          branch_id: selectedBranchId,
+          currency_id: currencyId || undefined,
+          date_from: dateFrom,
+          date_to: dateTo,
+        })
+        if (cancelled) return
+        setRows(res.data)
+        setTotalMargin(Number(res.total_margin))
+      } catch (err) {
+        if (!cancelled) setPageError(err.message ?? 'Gagal memuat laporan laba-rugi')
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBranchId, currencyId, dateFrom, dateTo])
 
   function resetFilters() {
     setDateFrom('2026-08-01')
     setDateTo('2026-08-31')
-    setCurrencyCode('')
+    setCurrencyId('')
   }
 
-  function exportExcel() {
-    downloadCsv(
-      'laporan-laba-rugi.csv',
-      ['No. Transaksi', 'Tanggal', 'Tipe', 'Mata Uang', 'Nominal', 'Kurs Default', 'Kurs Aktual', 'Laba/Rugi'],
-      filtered.map((t) => [
-        t.transactionNumber,
-        t.createdAt,
-        t.type === 'buy' ? 'Beli' : 'Jual',
-        t.currencyCode,
-        t.amount,
-        t.rateDefault,
-        t.rateActual,
-        t.margin,
-      ])
-    )
-  }
+  const exportParams = new URLSearchParams({
+    branch_id: selectedBranchId,
+    date_from: dateFrom,
+    date_to: dateTo,
+    ...(currencyId ? { currency_id: currencyId } : {}),
+  })
 
   return (
     <div className="flex flex-col gap-4">
       <Typography variant="body2" color="text.secondary">
         Menampilkan laporan laba-rugi untuk cabang: {branchName}
       </Typography>
+
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
 
       <div className="flex flex-wrap gap-4 items-center justify-between">
         <div className="flex flex-wrap gap-4 items-center">
@@ -112,23 +135,26 @@ function ProfitLossTab() {
             size="small"
             select
             label="Mata Uang"
-            value={currencyCode}
-            onChange={(e) => setCurrencyCode(e.target.value)}
+            value={currencyId}
+            onChange={(e) => setCurrencyId(e.target.value)}
             sx={{ minWidth: 140 }}
           >
             <MenuItem value="">Semua</MenuItem>
             {currencies.map((c) => (
-              <MenuItem key={c.id} value={c.code}>
+              <MenuItem key={c.id} value={c.id}>
                 {c.code}
               </MenuItem>
             ))}
           </TextField>
           <Button onClick={resetFilters}>Reset Filter</Button>
         </div>
-        <ExportButtons onExportExcel={exportExcel} />
+        <ExportButtons
+          csvUrl={`${API_BASE_URL}/reports/profit-loss/export?${exportParams}`}
+          pdfUrl={`${API_BASE_URL}/reports/profit-loss/export?format=pdf&${exportParams}`}
+        />
       </div>
 
-      <TableContainer className="print-area">
+      <TableContainer>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -143,21 +169,21 @@ function ProfitLossTab() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filtered.map((t) => (
+            {rows.map((t) => (
               <TableRow key={t.id} hover>
-                <TableCell>{t.transactionNumber}</TableCell>
-                <TableCell>{t.createdAt}</TableCell>
+                <TableCell>{t.transaction_number}</TableCell>
+                <TableCell>{formatDateTime(t.created_at)}</TableCell>
                 <TableCell>{t.type === 'buy' ? 'Beli' : 'Jual'}</TableCell>
-                <TableCell>{t.currencyCode}</TableCell>
+                <TableCell>{t.currency_code}</TableCell>
                 <TableCell align="right">{formatNumber(t.amount)}</TableCell>
-                <TableCell align="right">{formatNumber(t.rateDefault)}</TableCell>
-                <TableCell align="right">{formatNumber(t.rateActual)}</TableCell>
+                <TableCell align="right">{formatNumber(t.rate_default)}</TableCell>
+                <TableCell align="right">{formatNumber(t.rate_actual)}</TableCell>
                 <TableCell align="right" sx={{ color: t.margin >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>
                   {formatNumber(t.margin)}
                 </TableCell>
               </TableRow>
             ))}
-            {filtered.length === 0 && (
+            {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={8} align="center">
                   Tidak ada transaksi yang cocok dengan filter.
@@ -165,7 +191,7 @@ function ProfitLossTab() {
               </TableRow>
             )}
           </TableBody>
-          {filtered.length > 0 && (
+          {rows.length > 0 && (
             <TableBody>
               <TableRow>
                 <TableCell colSpan={7} align="right" sx={{ fontWeight: 700 }}>
@@ -187,38 +213,45 @@ function ProfitLossTab() {
 }
 
 const EMPLOYEE_COLUMNS = [
-  { key: 'name', label: 'Nama Karyawan' },
-  { key: 'jumlahTransaksi', label: 'Jumlah Transaksi', align: 'right' },
-  { key: 'totalOmzet', label: 'Total Omzet', align: 'right' },
-  { key: 'totalMargin', label: 'Total Laba/Rugi', align: 'right' },
+  { key: 'employee_name', label: 'Nama Karyawan' },
+  { key: 'transaction_count', label: 'Jumlah Transaksi', align: 'right' },
+  { key: 'total_omzet', label: 'Total Omzet', align: 'right' },
+  { key: 'total_margin', label: 'Total Laba/Rugi', align: 'right' },
 ]
 
 function EmployeeReportTab() {
   const { selectedBranchId, branches } = useBranch()
   const branchName = branches.find((b) => b.id === selectedBranchId)?.name
-  const [orderBy, setOrderBy] = useState('totalOmzet')
+  const [orderBy, setOrderBy] = useState('total_omzet')
   const [order, setOrder] = useState('desc')
+  const [rows, setRows] = useState([])
+  const [pageError, setPageError] = useState('')
 
-  const rows = employees
-    .filter((e) => e.branchId === selectedBranchId)
-    .map((e) => {
-      const employeeTransactions = transactions.filter(
-        (t) => t.branchId === selectedBranchId && t.employeeName === e.name
-      )
-      return {
-        id: e.id,
-        name: e.name,
-        jumlahTransaksi: employeeTransactions.length,
-        totalOmzet: employeeTransactions.reduce((sum, t) => sum + t.totalAmount, 0),
-        totalMargin: employeeTransactions.reduce((sum, t) => sum + computeMargin(t), 0),
+  useEffect(() => {
+    if (!selectedBranchId) return
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await apiClient.get('/reports/employee-performance', { branch_id: selectedBranchId })
+        if (!cancelled) setRows(res.data)
+      } catch (err) {
+        if (!cancelled) setPageError(err.message ?? 'Gagal memuat laporan per karyawan')
       }
-    })
-    .sort((a, b) => {
-      const dir = order === 'asc' ? 1 : -1
-      if (a[orderBy] < b[orderBy]) return -1 * dir
-      if (a[orderBy] > b[orderBy]) return 1 * dir
-      return 0
-    })
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBranchId])
+
+  const sortedRows = [...rows].sort((a, b) => {
+    const dir = order === 'asc' ? 1 : -1
+    if (a[orderBy] < b[orderBy]) return -1 * dir
+    if (a[orderBy] > b[orderBy]) return 1 * dir
+    return 0
+  })
 
   function handleSort(column) {
     if (orderBy === column) {
@@ -229,13 +262,7 @@ function EmployeeReportTab() {
     }
   }
 
-  function exportExcel() {
-    downloadCsv(
-      'laporan-per-karyawan.csv',
-      ['Nama Karyawan', 'Jumlah Transaksi', 'Total Omzet', 'Total Laba/Rugi'],
-      rows.map((r) => [r.name, r.jumlahTransaksi, r.totalOmzet, r.totalMargin])
-    )
-  }
+  const exportParams = new URLSearchParams({ branch_id: selectedBranchId })
 
   return (
     <div className="flex flex-col gap-4">
@@ -243,9 +270,17 @@ function EmployeeReportTab() {
         <Typography variant="body2" color="text.secondary">
           Menampilkan laporan per karyawan untuk cabang: {branchName}
         </Typography>
-        <ExportButtons onExportExcel={exportExcel} />
+        <ExportButtons
+          csvUrl={`${API_BASE_URL}/reports/employee-performance/export?${exportParams}`}
+          pdfUrl={`${API_BASE_URL}/reports/employee-performance/export?format=pdf&${exportParams}`}
+        />
       </div>
-      <TableContainer className="print-area">
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
+      <TableContainer>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -263,20 +298,20 @@ function EmployeeReportTab() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.id} hover>
-                <TableCell>{r.name}</TableCell>
-                <TableCell align="right">{r.jumlahTransaksi}</TableCell>
-                <TableCell align="right">{formatNumber(r.totalOmzet)}</TableCell>
+            {sortedRows.map((r) => (
+              <TableRow key={r.employee_id} hover>
+                <TableCell>{r.employee_name}</TableCell>
+                <TableCell align="right">{r.transaction_count}</TableCell>
+                <TableCell align="right">{formatNumber(r.total_omzet)}</TableCell>
                 <TableCell
                   align="right"
-                  sx={{ color: r.totalMargin >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}
+                  sx={{ color: r.total_margin >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}
                 >
-                  {formatNumber(r.totalMargin)}
+                  {formatNumber(r.total_margin)}
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && (
+            {sortedRows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} align="center">
                   Belum ada karyawan untuk cabang ini.

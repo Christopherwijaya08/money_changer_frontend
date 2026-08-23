@@ -17,26 +17,53 @@ import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
-import { cashBalances, cashDeposits as initialCashDeposits, currencies, transactions } from '../mocks/data'
+import { apiClient } from '../api/apiClient'
 import { useBranch } from '../context/BranchContext'
+import { useAuth } from '../context/AuthContext'
 import { useThousandSeparator } from '../hooks/useThousandSeparator'
+import { formatDateTime } from '../utils/formatDateTime'
 
 const TABS = ['Saldo Kas', 'Setor Kas', 'Rekonsiliasi Harian']
 
 function formatBalance(value) {
-  return value.toLocaleString('id-ID')
+  return Number(value).toLocaleString('id-ID')
 }
 
 function CashBalanceTab() {
   const { selectedBranchId, branches } = useBranch()
   const branchName = branches.find((b) => b.id === selectedBranchId)?.name
-  const balances = cashBalances.filter((b) => b.branchId === selectedBranchId)
+  const [balances, setBalances] = useState([])
+  const [pageError, setPageError] = useState('')
+
+  useEffect(() => {
+    if (!selectedBranchId) return
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await apiClient.get('/cash-balances', { branch_id: selectedBranchId })
+        if (!cancelled) setBalances(res.data)
+      } catch (err) {
+        if (!cancelled) setPageError(err.message ?? 'Gagal memuat saldo kas')
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBranchId])
 
   return (
     <div className="flex flex-col gap-4">
       <Typography variant="body2" color="text.secondary">
         Menampilkan saldo kas untuk cabang: {branchName}
       </Typography>
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
       <TableContainer>
         <Table size="small">
           <TableHead>
@@ -48,9 +75,9 @@ function CashBalanceTab() {
           </TableHead>
           <TableBody>
             {balances.map((b) => (
-              <TableRow key={b.currencyCode} hover>
-                <TableCell>{b.currencyCode}</TableCell>
-                <TableCell>{b.currencyName}</TableCell>
+              <TableRow key={b.currency_id} hover>
+                <TableCell>{b.currency_code}</TableCell>
+                <TableCell>{b.currency_name}</TableCell>
                 <TableCell align="right">{formatBalance(b.balance)}</TableCell>
               </TableRow>
             ))}
@@ -69,7 +96,7 @@ function CashBalanceTab() {
 }
 
 const depositSchema = yup.object({
-  currencyCode: yup.string().required('Pilih mata uang'),
+  currencyId: yup.number().typeError('Pilih mata uang').required('Pilih mata uang'),
   amount: yup
     .number()
     .typeError('Nominal harus diisi')
@@ -80,8 +107,11 @@ const depositSchema = yup.object({
 
 function CashDepositTab() {
   const { selectedBranchId, branches } = useBranch()
+  const { userId } = useAuth()
   const branchName = branches.find((b) => b.id === selectedBranchId)?.name
-  const [deposits, setDeposits] = useState(initialCashDeposits)
+  const [currencies, setCurrencies] = useState([])
+  const [deposits, setDeposits] = useState([])
+  const [pageError, setPageError] = useState('')
 
   const {
     control,
@@ -90,28 +120,53 @@ function CashDepositTab() {
     reset,
     formState: { errors },
   } = useForm({
-    defaultValues: { currencyCode: '', amount: '', note: '' },
+    defaultValues: { currencyId: '', amount: '', note: '' },
     resolver: yupResolver(depositSchema),
   })
 
-  function onSubmit(data) {
-    setDeposits((list) => [
-      {
-        id: Date.now(),
-        branchId: selectedBranchId,
-        currencyCode: data.currencyCode,
-        amount: Number(data.amount),
-        note: data.note || '',
-        createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      },
-      ...list,
-    ])
-    reset()
+  async function loadDeposits() {
+    if (!selectedBranchId) return
+    try {
+      const res = await apiClient.get('/cash-deposits', { branch_id: selectedBranchId, per_page: 100 })
+      setDeposits(res.data)
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal memuat riwayat setor kas')
+    }
   }
 
-  const history = deposits
-    .filter((d) => d.branchId === selectedBranchId)
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  useEffect(() => {
+    async function loadCurrencies() {
+      try {
+        const res = await apiClient.get('/currencies', { active_only: true })
+        setCurrencies(res.data)
+      } catch (err) {
+        setPageError(err.message ?? 'Gagal memuat data mata uang')
+      }
+    }
+    loadCurrencies()
+  }, [])
+
+  useEffect(() => {
+    loadDeposits()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBranchId])
+
+  async function onSubmit(data) {
+    try {
+      setPageError('')
+      await apiClient.post('/cash-deposits', {
+        branch_id: selectedBranchId,
+        currency_id: data.currencyId,
+        amount: Number(data.amount),
+        note: data.note || '',
+        user_id: userId,
+      })
+      reset()
+      loadDeposits()
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menyimpan setoran')
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -119,28 +174,32 @@ function CashDepositTab() {
         Menampilkan setor kas untuk cabang: {branchName}
       </Typography>
 
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
+
       <form onSubmit={handleSubmit(onSubmit)}>
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 4 }}>
             <Controller
-              name="currencyCode"
+              name="currencyId"
               control={control}
               render={({ field }) => (
                 <TextField
                   select
                   fullWidth
                   label="Mata Uang"
-                  error={!!errors.currencyCode}
-                  helperText={errors.currencyCode?.message}
+                  error={!!errors.currencyId}
+                  helperText={errors.currencyId?.message}
                   {...field}
                 >
-                  {currencies
-                    .filter((c) => c.isActive)
-                    .map((c) => (
-                      <MenuItem key={c.id} value={c.code}>
-                        {c.code}
-                      </MenuItem>
-                    ))}
+                  {currencies.map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.code}
+                    </MenuItem>
+                  ))}
                 </TextField>
               )}
             />
@@ -187,15 +246,15 @@ function CashDepositTab() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {history.map((d) => (
+            {deposits.map((d) => (
               <TableRow key={d.id} hover>
-                <TableCell>{d.createdAt}</TableCell>
-                <TableCell>{d.currencyCode}</TableCell>
+                <TableCell>{formatDateTime(d.created_at)}</TableCell>
+                <TableCell>{d.currency_code}</TableCell>
                 <TableCell align="right">{formatBalance(d.amount)}</TableCell>
                 <TableCell>{d.note}</TableCell>
               </TableRow>
             ))}
-            {history.length === 0 && (
+            {deposits.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} align="center">
                   Belum ada riwayat setor kas untuk cabang ini.
@@ -211,7 +270,7 @@ function CashDepositTab() {
 
 function ReconciliationRow({ row, onPhysicalChange }) {
   const [display, handleChange] = useThousandSeparator(row.saldoFisik, (value) =>
-    onPhysicalChange(row.currencyCode, value)
+    onPhysicalChange(row.currencyId, value)
   )
   const hasCounted = row.saldoFisik !== ''
   const selisih = hasCounted ? row.saldoFisik - row.saldoAkhirSistem : null
@@ -245,72 +304,68 @@ function ReconciliationRow({ row, onPhysicalChange }) {
 
 function ReconciliationTab() {
   const { selectedBranchId, branches } = useBranch()
+  const { userId } = useAuth()
   const branchName = branches.find((b) => b.id === selectedBranchId)?.name
-  const [date, setDate] = useState('2026-08-16')
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [rows, setRows] = useState([])
   const [physicalCounts, setPhysicalCounts] = useState({})
   const [saved, setSaved] = useState(false)
+  const [pageError, setPageError] = useState('')
 
-  // Physical counts are per-date; switching dates starts a fresh, unsaved count.
+  async function loadRows() {
+    if (!selectedBranchId) return
+    try {
+      const res = await apiClient.get('/cash-reconciliations', { branch_id: selectedBranchId, date })
+      setRows(res.data)
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal memuat data rekonsiliasi')
+    }
+  }
+
   useEffect(() => {
+    loadRows()
     setPhysicalCounts({})
     setSaved(false)
-  }, [date])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBranchId, date])
 
-  function handlePhysicalChange(code, value) {
-    setPhysicalCounts((prev) => ({ ...prev, [code]: value === '' ? '' : Number(value) }))
+  function handlePhysicalChange(currencyId, value) {
+    setPhysicalCounts((prev) => ({ ...prev, [currencyId]: value === '' ? '' : Number(value) }))
     setSaved(false)
   }
 
-  const rows = cashBalances
-    .filter((b) => b.branchId === selectedBranchId)
-    .map((b) => {
-      const masuk =
-        transactions
-          .filter(
-            (t) =>
-              t.branchId === selectedBranchId &&
-              t.currencyCode === b.currencyCode &&
-              t.type === 'buy' &&
-              t.createdAt.startsWith(date)
-          )
-          .reduce((sum, t) => sum + t.amount, 0) +
-        initialCashDeposits
-          .filter(
-            (d) =>
-              d.branchId === selectedBranchId &&
-              d.currencyCode === b.currencyCode &&
-              d.createdAt.startsWith(date)
-          )
-          .reduce((sum, d) => sum + d.amount, 0)
+  const tableRows = rows.map((r) => ({
+    currencyId: r.currency_id,
+    currencyCode: r.currency_code,
+    saldoAwal: r.opening_balance,
+    masuk: r.cash_in,
+    keluar: r.cash_out,
+    saldoAkhirSistem: r.system_balance,
+    saldoFisik: physicalCounts[r.currency_id] ?? r.physical_balance ?? '',
+  }))
 
-      const keluar = transactions
-        .filter(
-          (t) =>
-            t.branchId === selectedBranchId &&
-            t.currencyCode === b.currencyCode &&
-            t.type === 'sell' &&
-            t.createdAt.startsWith(date)
+  const countedRows = tableRows.filter((row) => row.saldoFisik !== '')
+
+  async function handleSaveReconciliation() {
+    try {
+      setPageError('')
+      await Promise.all(
+        countedRows.map((row) =>
+          apiClient.post('/cash-reconciliations', {
+            branch_id: selectedBranchId,
+            currency_id: row.currencyId,
+            date,
+            physical_balance: row.saldoFisik,
+            user_id: userId,
+          })
         )
-        .reduce((sum, t) => sum + t.amount, 0)
-
-      const saldoAkhirSistem = b.balance
-      const saldoAwal = saldoAkhirSistem - masuk + keluar
-
-      return {
-        currencyCode: b.currencyCode,
-        saldoAwal,
-        masuk,
-        keluar,
-        saldoAkhirSistem,
-        saldoFisik: physicalCounts[b.currencyCode] ?? '',
-      }
-    })
-
-  const hasAnyCount = rows.some((row) => row.saldoFisik !== '')
-
-  function handleSaveReconciliation() {
-    // ponytail: no backend wiring yet (Fase 5 integration); confirms the count was recorded for this date
-    setSaved(true)
+      )
+      setSaved(true)
+      setPhysicalCounts({})
+      loadRows()
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menyimpan rekonsiliasi')
+    }
   }
 
   return (
@@ -328,6 +383,11 @@ function ReconciliationTab() {
           onChange={(e) => setDate(e.target.value)}
         />
       </div>
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
       {saved && (
         <Alert severity="success" onClose={() => setSaved(false)}>
           Rekonsiliasi tanggal {date} berhasil disimpan.
@@ -347,10 +407,10 @@ function ReconciliationTab() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
-              <ReconciliationRow key={row.currencyCode} row={row} onPhysicalChange={handlePhysicalChange} />
+            {tableRows.map((row) => (
+              <ReconciliationRow key={row.currencyId} row={row} onPhysicalChange={handlePhysicalChange} />
             ))}
-            {rows.length === 0 && (
+            {tableRows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   Belum ada data untuk cabang ini.
@@ -361,7 +421,7 @@ function ReconciliationTab() {
         </Table>
       </TableContainer>
       <div className="flex justify-end">
-        <Button variant="contained" disabled={!hasAnyCount} onClick={handleSaveReconciliation}>
+        <Button variant="contained" disabled={countedRows.length === 0} onClick={handleSaveReconciliation}>
           Simpan Rekonsiliasi
         </Button>
       </div>
