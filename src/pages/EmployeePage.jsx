@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
@@ -15,10 +15,12 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogActions from '@mui/material/DialogActions'
+import Alert from '@mui/material/Alert'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import EditIcon from '@mui/icons-material/Edit'
 import PersonOffIcon from '@mui/icons-material/PersonOff'
-import { employees as initialEmployees } from '../mocks/data'
+import { apiClient } from '../api/apiClient'
+import { mapEmployee } from '../api/mappers'
 import EmployeeFormDialog from '../components/EmployeeFormDialog'
 import StatusChip from '../components/StatusChip'
 import { useBranch } from '../context/BranchContext'
@@ -27,20 +29,34 @@ export default function EmployeePage() {
   const { branches, selectedBranchId } = useBranch()
   const selectedBranchName = branches.find((b) => b.id === selectedBranchId)?.name
 
-  const [employees, setEmployees] = useState(initialEmployees)
+  const [employees, setEmployees] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [pageError, setPageError] = useState('')
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState(null)
   const [deactivatingEmployee, setDeactivatingEmployee] = useState(null)
 
-  const filteredEmployees = useMemo(() => {
+  async function loadEmployees() {
+    try {
+      const res = await apiClient.get('/employees', { branch_id: selectedBranchId })
+      setEmployees(res.data.map(mapEmployee))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal memuat data karyawan')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadEmployees()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBranchId])
+
+  const filteredEmployees = employees.filter((e) => {
     const needle = search.trim().toLowerCase()
-    return employees.filter((e) => {
-      if (e.branchId !== selectedBranchId) return false
-      if (needle && !e.name.toLowerCase().includes(needle)) return false
-      return true
-    })
-  }, [employees, search, selectedBranchId])
+    return !needle || e.name.toLowerCase().includes(needle)
+  })
 
   function openAdd() {
     setEditingEmployee(null)
@@ -52,19 +68,37 @@ export default function EmployeePage() {
     setDialogOpen(true)
   }
 
-  function handleSave(saved) {
-    setEmployees((list) => {
-      const exists = list.some((e) => e.id === saved.id)
-      if (exists) return list.map((e) => (e.id === saved.id ? saved : e))
-      return [{ ...saved, branchId: selectedBranchId }, ...list]
-    })
+  async function handleSave(formData) {
+    const isEditing = !!editingEmployee
+    const fields = { name: formData.name, position: formData.position }
+
+    try {
+      setPageError('')
+      const response = isEditing
+        ? await apiClient.put(`/employees/${editingEmployee.id}`, fields)
+        : await apiClient.post('/employees', { ...fields, branch_id: selectedBranchId })
+      const saved = mapEmployee(response.data)
+      setEmployees((list) => (isEditing ? list.map((e) => (e.id === saved.id ? saved : e)) : [saved, ...list]))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menyimpan karyawan')
+    }
   }
 
-  function confirmDeactivate() {
-    setEmployees((list) =>
-      list.map((e) => (e.id === deactivatingEmployee.id ? { ...e, isActive: false } : e))
-    )
-    setDeactivatingEmployee(null)
+  async function confirmDeactivate() {
+    try {
+      setPageError('')
+      const response = await apiClient.put(`/employees/${deactivatingEmployee.id}`, {
+        name: deactivatingEmployee.name,
+        position: deactivatingEmployee.position,
+        is_active: false,
+      })
+      const saved = mapEmployee(response.data)
+      setEmployees((list) => list.map((e) => (e.id === saved.id ? saved : e)))
+    } catch (err) {
+      setPageError(err.message ?? 'Gagal menonaktifkan karyawan')
+    } finally {
+      setDeactivatingEmployee(null)
+    }
   }
 
   return (
@@ -72,6 +106,12 @@ export default function EmployeePage() {
       <Typography variant="h5" component="h1" className="font-medium">
         Master Karyawan
       </Typography>
+
+      {pageError && (
+        <Alert severity="error" onClose={() => setPageError('')}>
+          {pageError}
+        </Alert>
+      )}
 
       <Paper className="p-6">
         <div className="flex items-center justify-between gap-4 mb-4">
@@ -127,7 +167,7 @@ export default function EmployeePage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredEmployees.length === 0 && (
+              {!loading && filteredEmployees.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} align="center">
                     Tidak ada karyawan yang cocok.

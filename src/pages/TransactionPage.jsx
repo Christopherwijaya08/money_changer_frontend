@@ -23,8 +23,8 @@ import Alert from '@mui/material/Alert'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import PrintIcon from '@mui/icons-material/Print'
-import { api } from '../api/client'
-import { mapCustomer, mapTransaction } from '../api/mappers'
+import { apiClient } from '../api/apiClient'
+import { mapCustomer, mapEmployee, mapTransaction } from '../api/mappers'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerSearchField from '../components/CustomerSearchField'
 import ReceiptDialog from '../components/ReceiptDialog'
@@ -45,10 +45,6 @@ function mapCurrency(currency, rateByCurrencyId) {
     rateBuy: Number(rate?.rate_buy ?? 0),
     rateSell: Number(rate?.rate_sell ?? 0),
   }
-}
-
-function mapEmployee(e) {
-  return { id: e.id, name: e.name, position: e.position }
 }
 
 const emptyFormValues = {
@@ -133,11 +129,11 @@ export default function TransactionPage() {
     async function loadReferenceData() {
       try {
         const [currenciesRes, ratesRes, employeesRes, customersRes, thresholdRes] = await Promise.all([
-          api.get('/currencies'),
-          api.get('/exchange-rates'),
-          api.get('/employees'),
-          api.get('/customers'),
-          api.get('/settings/threshold'),
+          apiClient.get('/currencies'),
+          apiClient.get('/exchange-rates'),
+          apiClient.get('/employees', { active_only: true }),
+          apiClient.get('/customers'),
+          apiClient.get('/settings/threshold'),
         ])
         if (cancelled) return
 
@@ -173,7 +169,7 @@ export default function TransactionPage() {
 
   async function fetchTransactions() {
     try {
-      const res = await api.get('/transactions', {
+      const res = await apiClient.get('/transactions', {
         branch_id: selectedBranchId,
         employee_id: filterEmployee || undefined,
         currency_id: filterCurrency || undefined,
@@ -237,7 +233,7 @@ export default function TransactionPage() {
 
     try {
       setSubmitError('')
-      const res = await api.post('/customers', body)
+      const res = await apiClient.post('/customers', body)
       const created = mapCustomer(res.data)
       setCustomerList((list) => [created, ...list])
       setValue('customer', created)
@@ -249,7 +245,7 @@ export default function TransactionPage() {
   async function onSubmit(data) {
     try {
       setSubmitError('')
-      const res = await api.post('/transactions', {
+      const res = await apiClient.post('/transactions', {
         branch_id: selectedBranchId,
         type: data.type,
         currency_id: data.currencyId,

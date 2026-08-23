@@ -16,7 +16,7 @@ import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import EditIcon from '@mui/icons-material/Edit'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import SettingsIcon from '@mui/icons-material/Settings'
-import { api } from '../api/client'
+import { apiClient } from '../api/apiClient'
 import { mapCustomer } from '../api/mappers'
 import CustomerQuickAddDialog from '../components/CustomerQuickAddDialog'
 import CustomerDetailDialog from '../components/CustomerDetailDialog'
@@ -33,7 +33,7 @@ export default function CustomerPage() {
 
   async function loadCustomers(search) {
     try {
-      const res = await api.get('/customers', { search })
+      const res = await apiClient.get('/customers', { search })
       setCustomerList(res.data.map(mapCustomer))
     } catch (err) {
       setPageError(err.message ?? 'Gagal memuat data nasabah')
@@ -76,14 +76,14 @@ export default function CustomerPage() {
         body.append('ktp_photo', formData.idPhotoFile)
         if (isEditing) {
           body.append('_method', 'PUT')
-          response = await api.post(`/customers/${editingCustomer.id}`, body)
+          response = await apiClient.post(`/customers/${editingCustomer.id}`, body)
         } else {
-          response = await api.post('/customers', body)
+          response = await apiClient.post('/customers', body)
         }
       } else if (isEditing) {
-        response = await api.put(`/customers/${editingCustomer.id}`, fields)
+        response = await apiClient.put(`/customers/${editingCustomer.id}`, fields)
       } else {
-        response = await api.post('/customers', fields)
+        response = await apiClient.post('/customers', fields)
       }
 
       const saved = mapCustomer(response.data)

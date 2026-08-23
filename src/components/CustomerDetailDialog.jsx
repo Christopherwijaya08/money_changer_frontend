@@ -16,7 +16,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Chip from '@mui/material/Chip'
-import { api } from '../api/client'
+import { apiClient } from '../api/apiClient'
 import { mapTransaction } from '../api/mappers'
 import KtpPhotoAvatar from './KtpPhotoAvatar'
 
@@ -45,7 +45,7 @@ export default function CustomerDetailDialog({ open, onClose, customer }) {
 
     async function loadHistory() {
       try {
-        const res = await api.get(`/customers/${customer.id}/transactions`, { per_page: 100 })
+        const res = await apiClient.get(`/customers/${customer.id}/transactions`, { per_page: 100 })
         if (!cancelled) setHistory(res.data.map(mapTransaction))
       } catch {
         if (!cancelled) setHistory([])

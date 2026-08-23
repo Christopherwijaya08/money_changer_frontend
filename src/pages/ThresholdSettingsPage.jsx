@@ -10,7 +10,7 @@ import Button from '@mui/material/Button'
 import Grid from '@mui/material/Grid'
 import Alert from '@mui/material/Alert'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { api } from '../api/client'
+import { apiClient } from '../api/apiClient'
 import { useAuth } from '../context/AuthContext'
 import { useThousandSeparator } from '../hooks/useThousandSeparator'
 
@@ -40,7 +40,7 @@ export default function ThresholdSettingsPage() {
 
     async function load() {
       try {
-        const res = await api.get('/settings/threshold')
+        const res = await apiClient.get('/settings/threshold')
         if (cancelled) return
         const value = Number(res.data.review_threshold)
         setThreshold(value)
@@ -60,7 +60,7 @@ export default function ThresholdSettingsPage() {
   async function onSubmit(data) {
     try {
       setPageError('')
-      const res = await api.put('/settings/threshold', {
+      const res = await apiClient.put('/settings/threshold', {
         review_threshold: Number(data.threshold),
         user_id: userId,
       })

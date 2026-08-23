@@ -20,7 +20,7 @@ import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
 import EditIcon from '@mui/icons-material/Edit'
 import MenuItem from '@mui/material/MenuItem'
-import { api } from '../api/client'
+import { apiClient } from '../api/apiClient'
 import { useAuth } from '../context/AuthContext'
 import { useThousandSeparator } from '../hooks/useThousandSeparator'
 import { formatDateTime } from '../utils/formatDateTime'
@@ -87,7 +87,7 @@ export default function ExchangeRatePage() {
 
   async function loadHistory(currencyList) {
     const results = await Promise.all(
-      currencyList.map((c) => api.get(`/exchange-rates/${c.id}/history`).then((res) => res.data.map((h) => mapHistory(h, c.code))))
+      currencyList.map((c) => apiClient.get(`/exchange-rates/${c.id}/history`).then((res) => res.data.map((h) => mapHistory(h, c.code))))
     )
     const merged = results.flat().sort((a, b) => (a.changedAt < b.changedAt ? 1 : -1))
     setHistory(merged)
@@ -95,7 +95,7 @@ export default function ExchangeRatePage() {
 
   async function loadAll() {
     try {
-      const ratesRes = await api.get('/exchange-rates')
+      const ratesRes = await apiClient.get('/exchange-rates')
       const loadedCurrencies = ratesRes.data.map(mapRate)
       setCurrencies(loadedCurrencies)
       await loadHistory(loadedCurrencies)
@@ -125,7 +125,7 @@ export default function ExchangeRatePage() {
   async function onSubmit(data) {
     try {
       setPageError('')
-      const res = await api.put(`/exchange-rates/${editing.id}`, {
+      const res = await apiClient.put(`/exchange-rates/${editing.id}`, {
         rate_buy: Number(data.rateBuy),
         rate_sell: Number(data.rateSell),
         user_id: userId,
